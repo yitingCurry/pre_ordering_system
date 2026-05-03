@@ -22,26 +22,58 @@ export default function Staff() {
     }
   }
 
+  async function applyCallResponse(data, label) {
+    if (data.message) {
+      setMessage(data.message);
+      await loadQueue();
+      setOrder(null);
+      setSelectedQueueId(null);
+      setSelectedQueueNumber(null);
+      return;
+    }
+    if (data.error) {
+      setMessage(data.error);
+      await loadQueue();
+      return;
+    }
+    setMessage(label);
+    await loadQueue();
+    setSelectedQueueId(data.id);
+    setSelectedQueueNumber(data.number);
+    setOrder(null);
+    await loadOrder(data.id, data.number);
+  }
+
   async function callNext() {
     try {
       const res = await fetch(`${API}/queue/next`, { method: 'POST' });
       const data = await res.json();
-      if (data.message) {
-        setMessage(data.message);
+      if (!res.ok) {
+        setMessage(data.error || '叫號失敗');
         await loadQueue();
-        setOrder(null);
-        setSelectedQueueId(null);
-        setSelectedQueueNumber(null);
         return;
       }
-      setMessage('已叫下一號');
-      await loadQueue();
-      setSelectedQueueId(data.id);
-      setSelectedQueueNumber(data.number);
-      setOrder(null);
-      await loadOrder(data.id, data.number);
+      await applyCallResponse(data, '已叫下一號');
     } catch {
       setMessage('叫號失敗');
+    }
+  }
+
+  async function callQueueById(queueId) {
+    setActionLoadingId(queueId);
+    try {
+      const res = await fetch(`${API}/queue/${queueId}/call`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage(data.error || '叫號失敗');
+        await loadQueue();
+        return;
+      }
+      await applyCallResponse(data, `已叫號碼 ${data.number}`);
+    } catch {
+      setMessage('叫號失敗');
+    } finally {
+      setActionLoadingId(null);
     }
   }
 
@@ -135,27 +167,53 @@ export default function Staff() {
             <div className="muted" style={{ marginBottom: 12 }}>點選號碼即可查看該客人的預點餐草稿。</div>
             {queueData.queue.map((item) => {
               const isCalled = item.status === 'called';
-              const actionDisabled = !isCalled || actionLoadingId === item.id;
+              const isWaiting = item.status === 'waiting';
+              const calledActionDisabled = !isCalled || actionLoadingId === item.id;
+              const waitingBusy = actionLoadingId === item.id;
+              const party = item.partySize != null && item.partySize > 0 ? item.partySize : 1;
               return (
                 <div key={item.id} className="queueItem" onClick={() => loadOrder(item.id, item.number)}>
                   <div className="queueInfo">
                     <div className="queueTop">
                       <span>號碼 {item.number}</span>
+                      <span className="queueHint">{party} 人</span>
                     </div>
                     <div className="queueRow">
                       <span className={`statusTag ${item.status}`}>{item.status === 'waiting' ? '等待中' : item.status === 'called' ? '已叫號' : item.status === 'skipped' ? '已過號' : item.status === 'seated' ? '已入座' : '完成'}</span>
                     </div>
                   </div>
+                  {isWaiting && (
+                    <div className="queueActions queueActionsRow">
+                      <button
+                        type="button"
+                        className="actionBtn callBtn"
+                        disabled={isCallNextDisabled || waitingBusy}
+                        onClick={(e) => { e.stopPropagation(); callQueueById(item.id); }}
+                      >叫此號</button>
+                      <button
+                        type="button"
+                        className="actionBtn skipBtn"
+                        disabled={waitingBusy}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!window.confirm('確認將此「等待中」號碼設為過號？')) return;
+                          updateQueueStatus(item.id, 'skip');
+                        }}
+                      >過號</button>
+                    </div>
+                  )}
                   {isCalled && (
                     <div className="queueActions">
                       <button
+                        type="button"
                         className="actionBtn skipBtn"
-                        disabled={actionDisabled}
+                        disabled={calledActionDisabled}
                         onClick={(e) => { e.stopPropagation(); updateQueueStatus(item.id, 'skip'); }}
                       >過號</button>
                       <button
+                        type="button"
                         className="actionBtn seatBtn"
-                        disabled={actionDisabled}
+                        disabled={calledActionDisabled}
                         onClick={(e) => { e.stopPropagation(); updateQueueStatus(item.id, 'seat'); }}
                       >確認入座</button>
                     </div>
