@@ -1,18 +1,34 @@
 import { useEffect, useState } from 'react';
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+function getApiBase() {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, '');
+  }
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
+  return '';
+}
+
+const API = getApiBase();
 
 export default function Staff() {
   const [queueData, setQueueData] = useState({ queue: [], current: null, waitingCount: 0 });
   const [selectedQueueId, setSelectedQueueId] = useState(null);
   const [selectedQueueNumber, setSelectedQueueNumber] = useState(null);
   const [order, setOrder] = useState(null);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(API ? '' : '目前尚未設定後端 API 網址，請先設定 NEXT_PUBLIC_API_URL。');
   const [confirmClear, setConfirmClear] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
-  const isCallNextDisabled = queueData.current?.status === 'called' || actionLoadingId !== null;
+  const isCallNextDisabled = !API || queueData.current?.status === 'called' || actionLoadingId !== null;
 
   async function loadQueue() {
+    if (!API) return;
     try {
       const res = await fetch(`${API}/queue`);
       const data = await res.json();
@@ -45,6 +61,10 @@ export default function Staff() {
   }
 
   async function callNext() {
+    if (!API) {
+      setMessage('尚未設定後端 API 網址，暫時無法叫號。');
+      return;
+    }
     try {
       const res = await fetch(`${API}/queue/next`, { method: 'POST' });
       const data = await res.json();
@@ -60,6 +80,10 @@ export default function Staff() {
   }
 
   async function callQueueById(queueId) {
+    if (!API) {
+      setMessage('尚未設定後端 API 網址，暫時無法叫號。');
+      return;
+    }
     setActionLoadingId(queueId);
     try {
       const res = await fetch(`${API}/queue/${queueId}/call`, { method: 'POST' });
@@ -78,6 +102,11 @@ export default function Staff() {
   }
 
   async function clearQueue() {
+    if (!API) {
+      setMessage('尚未設定後端 API 網址，暫時無法清空 queue。');
+      setConfirmClear(false);
+      return;
+    }
     try {
       const res = await fetch(`${API}/queue/clear`, { method: 'POST' });
       const data = await res.json();
@@ -95,6 +124,10 @@ export default function Staff() {
   }
 
   async function updateQueueStatus(queueId, action) {
+    if (!API) {
+      setMessage('尚未設定後端 API 網址，暫時無法更新狀態。');
+      return;
+    }
     setActionLoadingId(queueId);
     try {
       const res = await fetch(`${API}/queue/${queueId}/${action}`, { method: 'POST' });
@@ -116,11 +149,15 @@ export default function Staff() {
   }
 
   async function loadOrder(queueId, queueNumber) {
+    if (!API) return;
     setSelectedQueueId(queueId);
     setSelectedQueueNumber(queueNumber);
     try {
       const res = await fetch(`${API}/order/${queueId}`);
-      if (!res.ok) { setOrder(null); return; }
+      if (!res.ok) {
+        setOrder(null);
+        return;
+      }
       const data = await res.json();
       setOrder(data);
     } catch {
@@ -129,6 +166,7 @@ export default function Staff() {
   }
 
   useEffect(() => {
+    if (!API) return;
     loadQueue();
     const timer = setInterval(loadQueue, 3000);
     return () => clearInterval(timer);
@@ -157,7 +195,7 @@ export default function Staff() {
 
         <div className="staffActions">
           <button className="dangerBtn" onClick={callNext} disabled={isCallNextDisabled}>叫下一號</button>
-          <button className="clearBtn" onClick={() => setConfirmClear(true)}>清空今日列隊清單</button>
+          <button className="clearBtn" onClick={() => setConfirmClear(true)} disabled={!API}>清空今日列隊清單</button>
         </div>
         {message && <div className="card" style={{ color: '#92400e' }}>{message}</div>}
 
@@ -193,7 +231,7 @@ export default function Staff() {
                       <button
                         type="button"
                         className="actionBtn skipBtn"
-                        disabled={waitingBusy}
+                        disabled={waitingBusy || !API}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (!window.confirm('確認將此「等待中」號碼設為過號？')) return;
@@ -207,13 +245,13 @@ export default function Staff() {
                       <button
                         type="button"
                         className="actionBtn skipBtn"
-                        disabled={calledActionDisabled}
+                        disabled={calledActionDisabled || !API}
                         onClick={(e) => { e.stopPropagation(); updateQueueStatus(item.id, 'skip'); }}
                       >過號</button>
                       <button
                         type="button"
                         className="actionBtn seatBtn"
-                        disabled={calledActionDisabled}
+                        disabled={calledActionDisabled || !API}
                         onClick={(e) => { e.stopPropagation(); updateQueueStatus(item.id, 'seat'); }}
                       >確認入座</button>
                     </div>

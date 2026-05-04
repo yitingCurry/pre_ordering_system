@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+function getApiBase() {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, '');
+  }
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
+  return '';
+}
+
+const API = getApiBase();
 
 const menu = [
   { id: 'milk-tea', name: '港式奶茶', desc: '招牌熱飲', price: 45, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜', '無糖'] },
@@ -25,7 +40,7 @@ export default function Menu() {
   const [queue, setQueue] = useState(null);
   const [selected, setSelected] = useState({});
   const [note, setNote] = useState('');
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(API ? '' : '目前尚未設定後端 API 網址，請先設定 NEXT_PUBLIC_API_URL。');
   const [saveState, setSaveState] = useState('idle');
   const [savedSummary, setSavedSummary] = useState('');
   const [activePage, setActivePage] = useState('飲品');
@@ -73,7 +88,7 @@ export default function Menu() {
 
   async function loadMyState() {
     const token = getDeviceToken();
-    if (!token) return;
+    if (!API || !token) return;
     try {
       const res = await fetch(`${API}/customer-state/${token}`);
       const data = await res.json();
@@ -144,6 +159,10 @@ export default function Menu() {
   }
 
   async function submitOrder() {
+    if (!API) {
+      setMessage('尚未設定後端 API 網址，暫時無法送出餐點。');
+      return;
+    }
     if (!queue?.id) return setMessage('請先回首頁取號');
     const items = Object.entries(selected).map(([id, value]) => ({ id, ...value }));
     if (!items.length) return setMessage('請至少選擇一項餐點');
@@ -171,6 +190,7 @@ export default function Menu() {
   }
 
   useEffect(() => {
+    if (!API) return;
     loadMyState();
   }, []);
 
@@ -260,7 +280,7 @@ export default function Menu() {
         ))}
 
         <textarea className="textarea modern" placeholder="備註（例如：少冰、先做飲品）" value={note} onChange={(e) => setNote(e.target.value)} />
-        {message && <div className={message.includes('失敗') || message.includes('請') || message.includes('無法') ? 'alertError' : 'alertOk'}>{message}</div>}
+        {(message || savedSummary) && <div className={message.includes('失敗') || message.includes('請') || message.includes('無法') || message.includes('尚未設定') ? 'alertError' : 'alertOk'}>{message || savedSummary}</div>}
 
         <div className="checkoutBar">
           <div>

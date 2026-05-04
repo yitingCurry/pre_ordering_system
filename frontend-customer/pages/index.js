@@ -1,6 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+function getApiBase() {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, '');
+  }
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
+  return '';
+}
+
+const API = getApiBase();
 
 function getDeviceToken() {
   if (typeof window === 'undefined') return '';
@@ -15,7 +30,7 @@ function getDeviceToken() {
 export default function Home() {
   const [queueInfo, setQueueInfo] = useState({ current: null, waitingCount: 0, queue: [] });
   const [myQueue, setMyQueue] = useState(null);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(API ? '' : '目前尚未設定後端 API 網址，請先設定 NEXT_PUBLIC_API_URL。');
   const [deviceToken, setDeviceToken] = useState('');
   const [partySize, setPartySize] = useState(2);
   const router = useRouter();
@@ -44,17 +59,18 @@ export default function Home() {
   }, [myQueue]);
 
   async function loadQueueBoard() {
+    if (!API) return;
     try {
       const res = await fetch(`${API}/queue`);
       const data = await res.json();
       setQueueInfo(data);
     } catch {
-      setMessage('目前無法連線，請稍後再試。');
+      setMessage('目前無法連線到後端服務，請稍後再試。');
     }
   }
 
   async function loadMyState(token) {
-    if (!token) return;
+    if (!API || !token) return;
     try {
       const res = await fetch(`${API}/customer-state/${token}`);
       const data = await res.json();
@@ -72,6 +88,10 @@ export default function Home() {
   }
 
   async function takeNumber() {
+    if (!API) {
+      setMessage('尚未設定後端 API 網址，暫時無法取號。');
+      return;
+    }
     const token = deviceToken || getDeviceToken();
     try {
       const res = await fetch(`${API}/queue`, {
@@ -95,6 +115,7 @@ export default function Home() {
   useEffect(() => {
     const token = getDeviceToken();
     setDeviceToken(token);
+    if (!API) return;
     loadQueueBoard();
     loadMyState(token);
     const timer = setInterval(() => {
@@ -114,7 +135,7 @@ export default function Home() {
   const hasTicket = !!myQueue;
 
   const messageClass =
-    message.includes('失敗') || message.includes('無法') || message.includes('過號')
+    message.includes('失敗') || message.includes('無法') || message.includes('過號') || message.includes('尚未設定')
       ? 'alertError'
       : 'alertOk';
 
