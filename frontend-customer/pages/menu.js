@@ -191,7 +191,7 @@ export default function Menu() {
           <div className="ticketRow">
             <div className="ticketNo">{queue?.number || '--'}</div>
             <div>
-              <div className="ticketMain">{queue ? `狀態：${queue.status === 'called' ? '已叫號' : queue.status === 'waiting' ? '等待中' : '已完成'}` : '尚未取號'}</div>
+              <div className="ticketMain">{queue ? `狀態：${queue.status === 'called' ? '已叫號' : queue.status === 'waiting' ? '等待中' : queue.status === 'skipped' ? '已過號' : queue.status === 'seated' ? '已入座' : '已完成'}` : '尚未取號'}</div>
               <div className="ticketSub">已建立的餐點草稿會綁定這張號碼</div>
             </div>
           </div>

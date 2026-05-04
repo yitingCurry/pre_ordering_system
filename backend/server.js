@@ -60,6 +60,24 @@ async function initDb() {
     FOREIGN KEY (queueId) REFERENCES queue(id)
   )`);
   await ensureColumn('queue', 'deviceToken', 'TEXT');
+  await ensureColumn('queue', 'partySize', 'INTEGER NOT NULL DEFAULT 1');
+}
+
+async function finishCurrentCalled() {
+  await run("UPDATE queue SET status = 'done' WHERE status = 'called'");
+}
+
+/** @returns {{ called: object } | { message: string, current: null } | { error: string, status?: number }} */
+async function callWaitingQueueRow(queueId) {
+  await finishCurrentCalled();
+  const target = await get('SELECT * FROM queue WHERE id = ?', [queueId]);
+  if (!target) return { error: '找不到號碼', status: 404 };
+  if (target.status !== 'waiting') {
+    return { error: '僅能對「等待中」的號碼叫號', status: 400 };
+  }
+  await run("UPDATE queue SET status = 'called' WHERE id = ?", [queueId]);
+  const called = await get('SELECT * FROM queue WHERE id = ?', [queueId]);
+  return { called };
 }
 
 async function getActiveQueueByDevice(deviceToken) {
@@ -114,8 +132,17 @@ app.get('/queue/:id/detail', async (req, res) => {
 
 app.post('/queue', async (req, res) => {
   try {
-    const { deviceToken } = req.body;
+    const { deviceToken, partySize: rawParty } = req.body;
     if (!deviceToken) return res.status(400).json({ error: '缺少裝置識別' });
+
+    let partySize = 1;
+    if (rawParty !== undefined && rawParty !== null && rawParty !== '') {
+      const n = Number(rawParty);
+      if (!Number.isInteger(n) || n < 1 || n > 20) {
+        return res.status(400).json({ error: '用餐人數須為 1–20 的整數' });
+      }
+      partySize = n;
+    }
 
     // 註：測試模式下暫時取消同一裝置只能有一個未完成號碼的限制。
     // const existing = await getActiveQueueByDevice(deviceToken);
@@ -125,7 +152,10 @@ app.post('/queue', async (req, res) => {
 
     const row = await get('SELECT MAX(number) AS maxNumber FROM queue');
     const nextNumber = (row?.maxNumber || 0) + 1;
-    const result = await run('INSERT INTO queue (number, status, deviceToken) VALUES (?, ?, ?)', [nextNumber, 'waiting', deviceToken]);
+    const result = await run(
+      'INSERT INTO queue (number, status, deviceToken, partySize) VALUES (?, ?, ?, ?)',
+      [nextNumber, 'waiting', deviceToken, partySize]
+    );
     const created = await get('SELECT * FROM queue WHERE id = ?', [result.lastID]);
     res.status(201).json(created);
   } catch (e) {
@@ -146,12 +176,27 @@ app.get('/queue', async (req, res) => {
 
 app.post('/queue/next', async (req, res) => {
   try {
-    await run("UPDATE queue SET status = 'done' WHERE status = 'called'");
     const next = await get("SELECT * FROM queue WHERE status='waiting' ORDER BY id ASC LIMIT 1");
     if (!next) return res.json({ message: '目前沒有等待中的號碼', current: null });
-    await run("UPDATE queue SET status='called' WHERE id=?", [next.id]);
-    const called = await get('SELECT * FROM queue WHERE id = ?', [next.id]);
-    res.json(called);
+    const result = await callWaitingQueueRow(next.id);
+    if (result.error) {
+      return res.status(result.status || 500).json({ error: result.error });
+    }
+    res.json(result.called);
+  } catch (e) {
+    res.status(500).json({ error: '叫號失敗' });
+  }
+});
+
+app.post('/queue/:id/call', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: '無效的號碼 id' });
+    const result = await callWaitingQueueRow(id);
+    if (result.error) {
+      return res.status(result.status || 500).json({ error: result.error });
+    }
+    res.json(result.called);
   } catch (e) {
     res.status(500).json({ error: '叫號失敗' });
   }
