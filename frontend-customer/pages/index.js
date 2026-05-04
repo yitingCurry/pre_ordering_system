@@ -12,6 +12,48 @@ function getDeviceToken() {
   return token;
 }
 
+const PARTY_MIN = 1;
+const PARTY_MAX = 20;
+
+function clampPartySize(n) {
+  return Math.min(PARTY_MAX, Math.max(PARTY_MIN, n));
+}
+
+function PartySizeStepper({ label, className = '', partySize, setPartySize }) {
+  const rootClass = ['partyPicker', className].filter(Boolean).join(' ');
+  return (
+    <div className={rootClass} role="group" aria-label="用餐人數">
+      <div className="partyPickerLabel">{label}</div>
+      <div className="partyStepper">
+        <div className="qtyBox">
+          <button
+            type="button"
+            className="qtyBtn"
+            aria-label="減少一人"
+            disabled={partySize <= PARTY_MIN}
+            onClick={() => setPartySize((v) => clampPartySize(v - 1))}
+          >
+            -
+          </button>
+          <div className="partyStepperMid">
+            <div className="qtyValue">{partySize}</div>
+            <span className="partyStepperUnit">位</span>
+          </div>
+          <button
+            type="button"
+            className="qtyBtn"
+            aria-label="增加一人"
+            disabled={partySize >= PARTY_MAX}
+            onClick={() => setPartySize((v) => clampPartySize(v + 1))}
+          >
+            +
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [queueInfo, setQueueInfo] = useState({ current: null, waitingCount: 0, queue: [] });
   const [myQueue, setMyQueue] = useState(null);
@@ -19,8 +61,6 @@ export default function Home() {
   const [deviceToken, setDeviceToken] = useState('');
   const [partySize, setPartySize] = useState(2);
   const router = useRouter();
-
-  const partySizes = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12];
 
   const waitingAheadRows = useMemo(() => {
     if (!myQueue || myQueue.status !== 'waiting') return [];
@@ -119,21 +159,7 @@ export default function Home() {
       : 'alertOk';
 
   const partyPickerBlock = (
-    <div className="partyPicker">
-      <div className="partyPickerLabel">用餐人數（取號時送出）</div>
-      <div className="partyChips">
-        {partySizes.map((n) => (
-          <button
-            key={n}
-            type="button"
-            className={`partyChip${partySize === n ? ' active' : ''}`}
-            onClick={() => setPartySize(n)}
-          >
-            {n} 位
-          </button>
-        ))}
-      </div>
-    </div>
+    <PartySizeStepper label="用餐人數（取號時送出）" partySize={partySize} setPartySize={setPartySize} />
   );
 
   return (
@@ -208,21 +234,12 @@ export default function Home() {
             {message && <div className={messageClass}>{message}</div>}
 
             {myQueue.status === 'skipped' && (
-              <div className="partyPicker postRequeue">
-                <div className="partyPickerLabel">重新取號 · 用餐人數</div>
-                <div className="partyChips">
-                  {partySizes.map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      className={`partyChip${partySize === n ? ' active' : ''}`}
-                      onClick={() => setPartySize(n)}
-                    >
-                      {n} 位
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <PartySizeStepper
+                label="重新取號 · 用餐人數"
+                className="postRequeue"
+                partySize={partySize}
+                setPartySize={setPartySize}
+              />
             )}
 
             <div className="actionBlock">
