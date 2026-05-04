@@ -45,6 +45,8 @@ export default function Menu() {
   const [savedSummary, setSavedSummary] = useState('');
   const [activePage, setActivePage] = useState('飲品');
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedSnapshot, setSubmittedSnapshot] = useState({});
   const router = useRouter();
 
   const currentMenu = useMemo(() => menu.filter((item) => item.page === activePage), [activePage]);
@@ -69,8 +71,12 @@ export default function Menu() {
     };
   }), [selected]);
 
-  function applyExistingOrder(order) {
-    if (!order) return;
+  function applyExistingOrder(order, submitted = false) {
+    if (!order) {
+      setIsSubmitted(false);
+      setSubmittedSnapshot({});
+      return;
+    }
     const next = {};
     order.items.forEach((item) => {
       next[item.id] = {
@@ -83,7 +89,13 @@ export default function Menu() {
     });
     setSelected(next);
     setNote(order.note || '');
-    setSavedSummary(`已載入你先前的草稿，共 ${order.items.length} 種、${order.items.reduce((s, i) => s + (i.quantity || 1), 0)} 份。`);
+    setIsSubmitted(submitted);
+    setSubmittedSnapshot(submitted ? next : {});
+    setSavedSummary(
+      submitted
+        ? `訂單已送出，共 ${order.items.length} 種、${order.items.reduce((s, i) => s + (i.quantity || 1), 0)} 份。之後可以加點，但不能刪除原有品項或減少原有數量。`
+        : `已載入你先前的草稿，共 ${order.items.length} 種、${order.items.reduce((s, i) => s + (i.quantity || 1), 0)} 份。`
+    );
   }
 
   async function loadMyState() {
@@ -93,8 +105,9 @@ export default function Menu() {
       const res = await fetch(`${API}/customer-state/${token}`);
       const data = await res.json();
       setQueue(data.activeQueue || null);
-      applyExistingOrder(data.order);
-      if (!data.activeQueue) setMessage('請先取號後再建立預選餐點。');
+      const submitted = !!data.order;
+      applyExistingOrder(data.order, submitted);
+      if (!data.activeQueue) setMessage('請先回首頁取號後再建立預選餐點。');
     } catch {
       setMessage('目前無法載入你的資料。');
     }
@@ -103,14 +116,22 @@ export default function Menu() {
   function toggleItem(item) {
     setSelected((prev) => {
       const next = { ...prev };
-      if (next[item.id]) delete next[item.id];
-      else next[item.id] = {
-        name: item.name,
-        quantity: 1,
-        category: item.categories[0] || '',
-        variant: item.variants[0] || '',
-        options: []
-      };
+      const wasSubmitted = !!submittedSnapshot[item.id];
+      if (next[item.id]) {
+        if (wasSubmitted) {
+          setMessage('已送出的餐點不能刪除，只能加點。');
+          return prev;
+        }
+        delete next[item.id];
+      } else {
+        next[item.id] = {
+          name: item.name,
+          quantity: 1,
+          category: item.categories[0] || '',
+          variant: item.variants[0] || '',
+          options: []
+        };
+      }
       return next;
     });
   }
@@ -119,12 +140,22 @@ export default function Menu() {
     setSelected((prev) => {
       const current = prev[itemId];
       if (!current) return prev;
-      const quantity = Math.max(1, (current.quantity || 1) + diff);
+      const minQuantity = submittedSnapshot[itemId]?.quantity || 1;
+      const nextQuantity = (current.quantity || 1) + diff;
+      if (submittedSnapshot[itemId] && nextQuantity < minQuantity) {
+        setMessage('已送出的餐點數量不能減少。');
+        return prev;
+      }
+      const quantity = Math.max(1, nextQuantity);
       return { ...prev, [itemId]: { ...current, quantity } };
     });
   }
 
   function updateField(item, field, value) {
+    if (submittedSnapshot[item.id]) {
+      setMessage('已送出的餐點內容不能修改，只能新增餐點或增加數量。');
+      return;
+    }
     setSelected((prev) => {
       const current = prev[item.id] || {
         name: item.name,
@@ -138,6 +169,10 @@ export default function Menu() {
   }
 
   function toggleOption(item, option) {
+    if (submittedSnapshot[item.id]) {
+      setMessage('已送出的餐點內容不能修改，只能新增餐點或增加數量。');
+      return;
+    }
     setSelected((prev) => {
       const current = prev[item.id] || {
         name: item.name,
@@ -177,9 +212,9 @@ export default function Menu() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '儲存失敗');
-      applyExistingOrder(data);
+      applyExistingOrder(data, true);
       setSaveState('saved');
-      setSavedSummary(`已確認 ${data.items.length} 種餐點，共 ${data.items.reduce((sum, item) => sum + (item.quantity || 1), 0)} 份。`);
+      setSavedSummary(`訂單已送出，共 ${data.items.length} 種餐點、${data.items.reduce((sum, item) => sum + (item.quantity || 1), 0)} 份。之後可以加點，但不能刪除原有品項或減少原有數量。`);
       setShowConfirm(false);
       router.push('/');
     } catch {
@@ -226,7 +261,7 @@ export default function Menu() {
         {currentMenu.map((item) => (
           <div key={item.id} className="foodCard">
             <label className="foodTop">
-              <input type="checkbox" checked={!!selected[item.id]} onChange={() => toggleItem(item)} />
+              <input type="checkbox" checked={!!selected[item.id]} onChange={() => toggleItem(item)} disabled={false} />
               <div className="foodInfo">
                 <div className="foodName">{item.name}</div>
                 <div className="foodDesc">{item.desc}</div>
@@ -239,7 +274,7 @@ export default function Menu() {
                 <div className="controlRow">
                   <div className="controlLabel">數量</div>
                   <div className="qtyBox">
-                    <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, -1)}>-</button>
+                    <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, -1)} disabled={submittedSnapshot[item.id] && (selected[item.id].quantity || 1) <= (submittedSnapshot[item.id].quantity || 1)}>-</button>
                     <div className="qtyValue">{selected[item.id].quantity || 1}</div>
                     <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, 1)}>+</button>
                   </div>
@@ -249,7 +284,7 @@ export default function Menu() {
                   <div className="fieldLabel">種類</div>
                   <div className="selectorRow">
                     {item.categories.map((category) => (
-                      <button key={category} type="button" className={`selectChip ${selected[item.id].category === category ? 'active' : ''}`} onClick={() => updateField(item, 'category', category)}>{category}</button>
+                      <button key={category} type="button" className={`selectChip ${selected[item.id].category === category ? 'active' : ''}`} onClick={() => updateField(item, 'category', category)} disabled={!!submittedSnapshot[item.id]}>{category}</button>
                     ))}
                   </div>
                 </div>
@@ -258,7 +293,7 @@ export default function Menu() {
                   <div className="fieldLabel">規格</div>
                   <div className="selectorRow">
                     {item.variants.map((variant) => (
-                      <button key={variant} type="button" className={`selectChip ${selected[item.id].variant === variant ? 'active' : ''}`} onClick={() => updateField(item, 'variant', variant)}>{variant}</button>
+                      <button key={variant} type="button" className={`selectChip ${selected[item.id].variant === variant ? 'active' : ''}`} onClick={() => updateField(item, 'variant', variant)} disabled={!!submittedSnapshot[item.id]}>{variant}</button>
                     ))}
                   </div>
                 </div>
@@ -268,7 +303,7 @@ export default function Menu() {
                   <div className="optionGrid clean">
                     {item.options.map((option) => (
                       <label key={option} className="chip orange">
-                        <input type="checkbox" checked={selected[item.id]?.options.includes(option) || false} onChange={() => toggleOption(item, option)} />
+                        <input type="checkbox" checked={selected[item.id]?.options.includes(option) || false} onChange={() => toggleOption(item, option)} disabled={!!submittedSnapshot[item.id]} />
                         <span>{option}</span>
                       </label>
                     ))}
@@ -306,10 +341,11 @@ export default function Menu() {
                 ))}
               </div>
               <div className="confirmNote">備註：{note || '無'}</div>
+              <div className="confirmNote" style={{ color: '#b45309', fontWeight: 600 }}>提醒：送出後仍可加點，但不能刪除原有品項，也不能減少原有數量。</div>
               <div className="confirmTotal">總計：${subtotal}</div>
               <div className="modalActions">
                 <button type="button" className="outlineBtn modalBtn" onClick={() => setShowConfirm(false)}>返回修改</button>
-                <button type="button" className="orangeBtn modalBtn" onClick={submitOrder}>確認送出</button>
+                <button type="button" className="orangeBtn modalBtn" onClick={submitOrder}>確認送出（送出後僅可加點）</button>
               </div>
             </div>
           </div>
