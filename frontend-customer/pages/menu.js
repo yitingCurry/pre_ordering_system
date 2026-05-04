@@ -18,18 +18,41 @@ function getApiBase() {
 const API = getApiBase();
 
 const menu = [
-  { id: 'milk-tea', name: '港式奶茶', desc: '招牌熱飲', price: 45, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜', '無糖'] },
-  { id: 'lemon-tea', name: '凍檸茶', desc: '清爽解膩', price: 50, page: '飲品', categories: ['飲品'], variants: ['少冰', '正常冰'], options: ['少甜', '正常甜'] },
-  { id: 'yuanyang', name: '鴛鴦', desc: '咖啡加奶茶', price: 55, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜'] },
-  { id: 'pineapple-bun', name: '菠蘿包', desc: '經典茶餐廳必點', price: 35, page: '麵包小食', categories: ['麵包'], variants: ['原味', '加牛油'], options: ['正常'] },
-  { id: 'french-toast', name: '西多士', desc: '甜食派最愛', price: 55, page: '麵包小食', categories: ['小食'], variants: ['花生醬', '煉奶'], options: ['切半', '正常'] },
-  { id: 'egg-tart', name: '蛋撻', desc: '熱賣點心', price: 30, page: '麵包小食', categories: ['點心'], variants: ['原味', '酥皮'], options: ['正常'] },
-  { id: 'instant-noodle', name: '餐肉公仔麵', desc: '快速又飽足', price: 75, page: '主食', categories: ['主食'], variants: ['湯麵', '撈麵'], options: ['加蛋', '走蔥'] },
-  { id: 'beef-noodle', name: '沙嗲牛肉公仔麵', desc: '重口味熱門主食', price: 88, page: '主食', categories: ['主食'], variants: ['湯麵', '撈麵'], options: ['加蛋', '走蔥'] },
-  { id: 'baked-rice', name: '焗豬扒飯', desc: '經典港式焗飯', price: 105, page: '主食', categories: ['主食'], variants: ['茄汁', '白汁'], options: ['加芝士'] }
+  { id: 'signature-milk-tea', name: '招牌奶茶', desc: '港式經典熱飲', price: 36, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜', '無糖'] },
+  { id: 'hk-red-tea', name: '港式紅茶', desc: '茶香濃厚', price: 32, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜', '無糖'] },
+  { id: 'yuanyang', name: '鴛鴦', desc: '咖啡加奶茶', price: 38, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜'] },
+  { id: 'lemon-tea', name: '檸檬茶', desc: '清爽解膩', price: 34, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜'] },
+  { id: 'ovaltine', name: '阿華田', desc: '經典麥芽可可', price: 36, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['正常甜', '少甜'] },
+  { id: 'lemon-coke', name: '檸檬可樂', desc: '汽水系飲品', price: 36, page: '飲品', categories: ['飲品'], variants: ['正常冰'], options: ['少冰', '正常冰'] },
+  { id: 'red-bean-ice', name: '紅豆冰', desc: '港式冰飲甜品', price: 40, page: '飲品', categories: ['飲品'], variants: ['正常冰'], options: ['少冰', '正常冰'] },
+
+  { id: 'company-sandwich', name: '公司三文治', desc: '港式茶餐廳常見輕食', price: 48, page: '小食甜品', categories: ['三文治'], variants: ['原味'], options: ['切半', '正常'] },
+  { id: 'luncheon-meat-egg-sandwich', name: '餐肉蛋三文治', desc: '經典港式三文治', price: 42, page: '小食甜品', categories: ['三文治'], variants: ['原味'], options: ['切半', '正常'] },
+  { id: 'french-toast', name: '法蘭西多士', desc: '甜食人氣款', price: 42, page: '小食甜品', categories: ['多士'], variants: ['花生醬', '煉奶'], options: ['正常'] },
+  { id: 'cream-toast', name: '鮮奶油多士', desc: '簡單經典', price: 30, page: '小食甜品', categories: ['多士'], variants: ['原味'], options: ['正常'] },
+  { id: 'peanut-milk-toast', name: '花生奶醬多士', desc: '甜香濃郁', price: 34, page: '小食甜品', categories: ['多士'], variants: ['原味'], options: ['正常'] },
+  { id: 'hk-turnip-cake', name: '港式蘿蔔糕', desc: '茶餐廳小食', price: 36, page: '小食甜品', categories: ['小食'], variants: ['香煎'], options: ['正常'] },
+  { id: 'siu-mai', name: '港式燒賣', desc: '人氣蒸點', price: 35, page: '小食甜品', categories: ['小食'], variants: ['原味'], options: ['正常'] },
+  { id: 'mango-pudding', name: '芒果布丁', desc: '飯後甜品', price: 42, page: '小食甜品', categories: ['甜品'], variants: ['冰'], options: ['正常'] },
+  { id: 'yangzhi-ganlu', name: '楊枝甘露', desc: '經典港式甜品', price: 48, page: '小食甜品', categories: ['甜品'], variants: ['冰'], options: ['正常'] },
+  { id: 'herbal-jelly', name: '龜苓膏', desc: '港式涼品', price: 40, page: '小食甜品', categories: ['甜品'], variants: ['原味'], options: ['正常'] },
+
+  { id: 'hk-fried-noodle', name: '港式炒麵', desc: '招牌炒粉麵飯類', price: 88, page: '主食', categories: ['炒粉麵飯'], variants: ['炒麵'], options: ['加蛋', '走蔥'] },
+  { id: 'beef-fried-noodle', name: '牛肉炒麵', desc: '經典港式炒麵', price: 96, page: '主食', categories: ['炒粉麵飯'], variants: ['炒麵'], options: ['加蛋', '走蔥'] },
+  { id: 'dry-fried-beef-ho-fun', name: '乾炒牛河', desc: '茶餐廳招牌', price: 98, page: '主食', categories: ['炒粉麵飯'], variants: ['炒河粉'], options: ['加底', '正常'] },
+  { id: 'yangzhou-fried-rice', name: '揚州炒飯', desc: '經典炒飯', price: 92, page: '主食', categories: ['炒粉麵飯'], variants: ['炒飯'], options: ['加蛋', '正常'] },
+  { id: 'salted-fish-chicken-fried-rice', name: '鹹魚雞粒炒飯', desc: '港式風味炒飯', price: 94, page: '主食', categories: ['炒粉麵飯'], variants: ['炒飯'], options: ['加蛋', '正常'] },
+  { id: 'fujian-fried-rice', name: '福建炒飯', desc: '醬汁燴炒飯', price: 102, page: '主食', categories: ['燴飯'], variants: ['燴飯'], options: ['正常'] },
+  { id: 'curry-beef-rice', name: '咖哩牛肉飯', desc: '人氣飯類', price: 98, page: '主食', categories: ['燴飯'], variants: ['飯'], options: ['加蛋', '正常辣'] },
+  { id: 'black-pepper-chicken-rice', name: '黑椒雞排飯', desc: '濃味主食', price: 102, page: '主食', categories: ['燴飯'], variants: ['飯'], options: ['加蛋', '正常辣'] },
+  { id: 'xo-beef-fried-instant-noodle', name: 'XO牛肉炒公仔麵', desc: '本店特別推薦', price: 96, page: '主食', categories: ['炒公仔麵'], variants: ['炒公仔麵'], options: ['加蛋', '走蔥'] },
+  { id: 'satay-beef-fried-instant-noodle', name: '沙茶牛肉炒公仔麵', desc: '重口味熱門主食', price: 94, page: '主食', categories: ['炒公仔麵'], variants: ['炒公仔麵'], options: ['加蛋', '走蔥'] },
+  { id: 'luncheon-meat-egg-noodle', name: '餐肉蛋湯麵', desc: '經典湯麵', price: 82, page: '主食', categories: ['湯麵類'], variants: ['湯麵'], options: ['加蛋', '走蔥'] },
+  { id: 'beef-wonton-noodle', name: '牛肉雲吞麵', desc: '港式湯麵', price: 96, page: '主食', categories: ['湯麵類'], variants: ['湯麵'], options: ['加底', '走蔥'] },
+  { id: 'beef-brisket-wonton-noodle', name: '牛腩雲吞麵', desc: '雙拼人氣主食', price: 108, page: '主食', categories: ['湯麵類'], variants: ['湯麵'], options: ['加底', '走蔥'] }
 ];
 
-const pages = ['飲品', '麵包小食', '主食'];
+const pages = ['飲品', '小食甜品', '主食'];
 
 function getDeviceToken() {
   if (typeof window === 'undefined') return '';
