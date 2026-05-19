@@ -18,41 +18,116 @@ function getApiBase() {
 const API = getApiBase();
 
 const menu = [
-  { id: 'signature-milk-tea', name: '招牌奶茶', desc: '港式經典熱飲', price: 36, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜', '無糖'] },
-  { id: 'hk-red-tea', name: '港式紅茶', desc: '茶香濃厚', price: 32, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜', '無糖'] },
-  { id: 'yuanyang', name: '鴛鴦', desc: '咖啡加奶茶', price: 38, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜'] },
-  { id: 'lemon-tea', name: '檸檬茶', desc: '清爽解膩', price: 34, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['少甜', '正常甜'] },
-  { id: 'ovaltine', name: '阿華田', desc: '經典麥芽可可', price: 36, page: '飲品', categories: ['飲品'], variants: ['熱飲', '凍飲'], options: ['正常甜', '少甜'] },
-  { id: 'lemon-coke', name: '檸檬可樂', desc: '汽水系飲品', price: 36, page: '飲品', categories: ['飲品'], variants: ['正常冰'], options: ['少冰', '正常冰'] },
-  { id: 'red-bean-ice', name: '紅豆冰', desc: '港式冰飲甜品', price: 40, page: '飲品', categories: ['飲品'], variants: ['正常冰'], options: ['少冰', '正常冰'] },
+  { id: '001', name: '餐肉蛋豬排飯', price: 160, page: '本店特別推薦', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
 
-  { id: 'company-sandwich', name: '公司三文治', desc: '港式茶餐廳常見輕食', price: 48, page: '小食甜品', categories: ['三文治'], variants: ['原味'], options: ['切半', '正常'] },
-  { id: 'luncheon-meat-egg-sandwich', name: '餐肉蛋三文治', desc: '經典港式三文治', price: 42, page: '小食甜品', categories: ['三文治'], variants: ['原味'], options: ['切半', '正常'] },
-  { id: 'french-toast', name: '法蘭西多士', desc: '甜食人氣款', price: 42, page: '小食甜品', categories: ['多士'], variants: ['花生醬', '煉奶'], options: ['正常'] },
-  { id: 'cream-toast', name: '鮮奶油多士', desc: '簡單經典', price: 30, page: '小食甜品', categories: ['多士'], variants: ['原味'], options: ['正常'] },
-  { id: 'peanut-milk-toast', name: '花生奶醬多士', desc: '甜香濃郁', price: 34, page: '小食甜品', categories: ['多士'], variants: ['原味'], options: ['正常'] },
-  { id: 'hk-turnip-cake', name: '港式蘿蔔糕', desc: '茶餐廳小食', price: 36, page: '小食甜品', categories: ['小食'], variants: ['香煎'], options: ['正常'] },
-  { id: 'siu-mai', name: '港式燒賣', desc: '人氣蒸點', price: 35, page: '小食甜品', categories: ['小食'], variants: ['原味'], options: ['正常'] },
-  { id: 'mango-pudding', name: '芒果布丁', desc: '飯後甜品', price: 42, page: '小食甜品', categories: ['甜品'], variants: ['冰'], options: ['正常'] },
-  { id: 'yangzhi-ganlu', name: '楊枝甘露', desc: '經典港式甜品', price: 48, page: '小食甜品', categories: ['甜品'], variants: ['冰'], options: ['正常'] },
-  { id: 'herbal-jelly', name: '龜苓膏', desc: '港式涼品', price: 40, page: '小食甜品', categories: ['甜品'], variants: ['原味'], options: ['正常'] },
+  { id: '002', name: '港式炒麵', price: 200, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '003', name: '牛肉炒麵', price: 200, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '004', name: '銀芽肉絲炒麵', price: 180, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '005', name: '羅漢上素炒麵', price: 180, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '006', name: '豉油皇炒麵', price: 160, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '007', name: '豉椒牛肉河', price: 200, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '008', name: '豉椒排骨河', price: 200, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '009', name: '干炒牛肉河', price: 200, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '010', name: '干炒豬肉河', price: 200, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '011', name: '沙茶肥牛炆米粉', price: 200, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '012', name: '雪菜肉絲炆米粉', price: 160, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '013', name: '馬來炒米粉', price: 160, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '014', name: '鹹魚雞粒炒飯', price: 200, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '015', name: '鳳梨雞粒炒飯', price: 160, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '016', name: '生炒牛肉飯', price: 160, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '017', name: '西式炒飯', price: 160, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '018', name: '楊州炒飯', price: 160, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '019', name: '素炒飯', price: 160, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '020', name: '蔥油雞飯', price: 190, page: '炒粉/面/飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
 
-  { id: 'hk-fried-noodle', name: '港式炒麵', desc: '招牌炒粉麵飯類', price: 88, page: '主食', categories: ['炒粉麵飯'], variants: ['炒麵'], options: ['加蛋', '走蔥'] },
-  { id: 'beef-fried-noodle', name: '牛肉炒麵', desc: '經典港式炒麵', price: 96, page: '主食', categories: ['炒粉麵飯'], variants: ['炒麵'], options: ['加蛋', '走蔥'] },
-  { id: 'dry-fried-beef-ho-fun', name: '乾炒牛河', desc: '茶餐廳招牌', price: 98, page: '主食', categories: ['炒粉麵飯'], variants: ['炒河粉'], options: ['加底', '正常'] },
-  { id: 'yangzhou-fried-rice', name: '揚州炒飯', desc: '經典炒飯', price: 92, page: '主食', categories: ['炒粉麵飯'], variants: ['炒飯'], options: ['加蛋', '正常'] },
-  { id: 'salted-fish-chicken-fried-rice', name: '鹹魚雞粒炒飯', desc: '港式風味炒飯', price: 94, page: '主食', categories: ['炒粉麵飯'], variants: ['炒飯'], options: ['加蛋', '正常'] },
-  { id: 'fujian-fried-rice', name: '福建炒飯', desc: '醬汁燴炒飯', price: 102, page: '主食', categories: ['燴飯'], variants: ['燴飯'], options: ['正常'] },
-  { id: 'curry-beef-rice', name: '咖哩牛肉飯', desc: '人氣飯類', price: 98, page: '主食', categories: ['燴飯'], variants: ['飯'], options: ['加蛋', '正常辣'] },
-  { id: 'black-pepper-chicken-rice', name: '黑椒雞排飯', desc: '濃味主食', price: 102, page: '主食', categories: ['燴飯'], variants: ['飯'], options: ['加蛋', '正常辣'] },
-  { id: 'xo-beef-fried-instant-noodle', name: 'XO牛肉炒公仔麵', desc: '本店特別推薦', price: 96, page: '主食', categories: ['炒公仔麵'], variants: ['炒公仔麵'], options: ['加蛋', '走蔥'] },
-  { id: 'satay-beef-fried-instant-noodle', name: '沙茶牛肉炒公仔麵', desc: '重口味熱門主食', price: 94, page: '主食', categories: ['炒公仔麵'], variants: ['炒公仔麵'], options: ['加蛋', '走蔥'] },
-  { id: 'luncheon-meat-egg-noodle', name: '餐肉蛋湯麵', desc: '經典湯麵', price: 82, page: '主食', categories: ['湯麵類'], variants: ['湯麵'], options: ['加蛋', '走蔥'] },
-  { id: 'beef-wonton-noodle', name: '牛肉雲吞麵', desc: '港式湯麵', price: 96, page: '主食', categories: ['湯麵類'], variants: ['湯麵'], options: ['加底', '走蔥'] },
-  { id: 'beef-brisket-wonton-noodle', name: '牛腩雲吞麵', desc: '雙拼人氣主食', price: 108, page: '主食', categories: ['湯麵類'], variants: ['湯麵'], options: ['加底', '走蔥'] }
+  { id: '021', name: '福建燴飯', price: 200, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '022', name: '紅燒魚片飯', price: 160, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '023', name: '咕咾魚片飯', price: 160, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '024', name: '咖哩魚片飯', price: 160, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '025', name: '咖哩雞排飯', price: 160, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '026', name: '橙花雞排飯', price: 160, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '027', name: '黑椒豬排飯', price: 150, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '028', name: '鮮茄豬排飯', price: 150, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '029', name: '咖哩豬排飯', price: 150, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '030', name: '咖哩排骨飯', price: 150, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '031', name: '鮮茄牛肉飯', price: 150, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '032', name: '滑蛋牛肉飯', price: 150, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '033', name: '窩蛋碎牛肉飯', price: 150, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '034', name: '豉椒牛肉飯', price: 150, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '035', name: '麻婆豆腐飯', price: 140, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '036', name: '羅漢素燴飯', price: 140, page: '燴飯', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+
+  { id: '037', name: '豉椒蒸排骨飯', price: 150, page: '每日限量', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '038', name: '香菇蒸滑雞飯', price: 150, page: '每日限量', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '039', name: '鹹魚蒸肉餅飯', price: 150, page: '每日限量', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '040', name: '腊味蒸飯', price: 150, page: '每日限量', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+
+  { id: '041', name: '牛肉撈麵', price: 200, page: '湯麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '042', name: '豬肉撈麵', price: 200, page: '湯麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '043', name: '越式肥牛湯米線', price: 180, page: '湯麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '044', name: '潮州四寶湯米線', price: 160, page: '湯麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '045', name: '五香牛肚麵', price: 160, page: '湯麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '046', name: '咖哩綜合麵', price: 150, page: '湯麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '047', name: '炸豬排湯麵', price: 150, page: '湯麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '048', name: '牛肉蛋湯麵', price: 150, page: '湯麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '049', name: '餐肉蛋湯麵', price: 150, page: '湯麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '050', name: '腸仔蛋湯麵', price: 150, page: '湯麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+
+  { id: '051', name: 'XO牛肉炒公仔麵', price: 200, page: '炒公仔麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '052', name: '起士奶油豬排公仔麵', price: 200, page: '炒公仔麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '053', name: '沙茶海鮮公仔麵', price: 200, page: '炒公仔麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '054', name: '干炒豬排公仔麵', price: 200, page: '炒公仔麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '055', name: '餐肉蛋炒公仔麵', price: 200, page: '炒公仔麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '056', name: '蔥油雞公仔麵', price: 200, page: '炒公仔麵', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+
+  { id: '057', name: '港式煲老火湯', price: 100, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '058', name: 'XO炒蘿蔔糕', price: 190, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '059', name: '腊味蘿蔔糕', price: 90, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '060', name: '鮮肉腐皮捲', price: 140, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '061', name: '蝦米煎腸粉', price: 90, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '062', name: '港式薄餅', price: 80, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '063', name: '鮮油菠蘿飽', price: 60, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '064', name: '炸雞排(一片)', price: 140, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '065', name: '炸豬排(一片)', price: 110, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '066', name: '餐肉(一片)', price: 50, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '067', name: '腸仔(一份)', price: 40, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '068', name: '咖哩綜合(魚蛋、鴨丸、蘿蔔、豬血)', price: 130, page: '本店特色', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+
+  { id: '069', name: '招牌奶茶', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '070', name: '美式咖啡', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '071', name: '特式鴛鴦', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '072', name: '檸檬龍茶', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '073', name: '檸檬可樂', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '074', name: '檸檬蜜', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '075', name: '阿華田', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '076', name: '桂圓杞子茶', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '077', name: '川貝杏仁茶', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '078', name: '芒果汁', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '079', name: '紅豆冰', price: 80, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '080', name: '鹹檸檬雪碧', price: 90, page: '冷熱飲品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+
+  { id: '081', name: '公司三文治', price: 120, page: '三文治', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '082', name: '豬排蛋三文治', price: 120, page: '三文治', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '083', name: '餐肉蛋三文治', price: 90, page: '三文治', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '084', name: '鮮牛肉三文治', price: 80, page: '三文治', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '085', name: '芝士火腿三文治', price: 80, page: '三文治', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '086', name: '火腿蛋三文治', price: 80, page: '三文治', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '087', name: '雞蛋三文治', price: 80, page: '三文治', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  
+  { id: '088', name: '法蘭西多士', price: 100, page: '多士', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '089', name: '鮮奶油多士', price: 70, page: '多士', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '090', name: '花生奶醬多士', price: 70, page: '多士', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+
+  { id: '091', name: '楊枝甘露', price: 80, page: '甜品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '092', name: '首烏芝麻糊', price: 80, page: '甜品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '093', name: '奶皇包', price: 80, page: '甜品', categories: ['暫無'], variants: ['暫無'], options: ['蒸', '炸'] },
+  { id: '094', name: '豆沙煎餅', price: 80, page: '甜品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '095', name: '紅豆蓮子露 ', price: 80, page: '甜品', categories: ['暫無'], variants: ['暫無'], options: ['熱', '冰'] },
+  { id: '096', name: '芝麻糊奶酪', price: 80, page: '甜品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
+  { id: '097', name: '鳳梨奶酪', price: 80, page: '甜品', categories: ['暫無'], variants: ['暫無'], options: ['暫無'] },
 ];
 
-const pages = ['飲品', '小食甜品', '主食'];
+const pages = ['本店特別推薦', '炒粉/面/飯', '燴飯', '每日限量', '湯麵', '炒公仔麵', '本店特色', '冷熱飲品', '三文治', '多士', '甜品'];
 
 function getDeviceToken() {
   if (typeof window === 'undefined') return '';
@@ -150,7 +225,6 @@ export default function Menu() {
         next[item.id] = {
           name: item.name,
           quantity: 1,
-          category: item.categories[0] || '',
           variant: item.variants[0] || '',
           options: []
         };
@@ -183,7 +257,6 @@ export default function Menu() {
       const current = prev[item.id] || {
         name: item.name,
         quantity: 1,
-        category: item.categories[0] || '',
         variant: item.variants[0] || '',
         options: []
       };
@@ -200,7 +273,6 @@ export default function Menu() {
       const current = prev[item.id] || {
         name: item.name,
         quantity: 1,
-        category: item.categories[0] || '',
         variant: item.variants[0] || '',
         options: []
       };
@@ -287,7 +359,6 @@ export default function Menu() {
               <input type="checkbox" checked={!!selected[item.id]} onChange={() => toggleItem(item)} disabled={false} />
               <div className="foodInfo">
                 <div className="foodName">{item.name}</div>
-                <div className="foodDesc">{item.desc}</div>
               </div>
               <div className="foodPrice">${item.price}</div>
             </label>
@@ -300,15 +371,6 @@ export default function Menu() {
                     <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, -1)} disabled={submittedSnapshot[item.id] && (selected[item.id].quantity || 1) <= (submittedSnapshot[item.id].quantity || 1)}>-</button>
                     <div className="qtyValue">{selected[item.id].quantity || 1}</div>
                     <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, 1)}>+</button>
-                  </div>
-                </div>
-
-                <div className="fieldBlock">
-                  <div className="fieldLabel">種類</div>
-                  <div className="selectorRow">
-                    {item.categories.map((category) => (
-                      <button key={category} type="button" className={`selectChip ${selected[item.id].category === category ? 'active' : ''}`} onClick={() => updateField(item, 'category', category)} disabled={!!submittedSnapshot[item.id]}>{category}</button>
-                    ))}
                   </div>
                 </div>
 
