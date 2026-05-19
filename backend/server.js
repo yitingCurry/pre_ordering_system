@@ -63,13 +63,13 @@ async function initDb() {
   await ensureColumn('queue', 'partySize', 'INTEGER NOT NULL DEFAULT 1');
 }
 
-async function finishCurrentCalled() {
-  await run("UPDATE queue SET status = 'done' WHERE status = 'called'");
-}
+// async function finishCurrentCalled() {
+//   await run("UPDATE queue SET status = 'done' WHERE status = 'called'");
+// }
 
 /** @returns {{ called: object } | { message: string, current: null } | { error: string, status?: number }} */
 async function callWaitingQueueRow(queueId) {
-  await finishCurrentCalled();
+  // await finishCurrentCalled();
   const target = await get('SELECT * FROM queue WHERE id = ?', [queueId]);
   if (!target) return { error: '找不到號碼', status: 404 };
   if (target.status !== 'waiting') {
@@ -78,6 +78,42 @@ async function callWaitingQueueRow(queueId) {
   await run("UPDATE queue SET status = 'called' WHERE id = ?", [queueId]);
   const called = await get('SELECT * FROM queue WHERE id = ?', [queueId]);
   return { called };
+}
+
+function getCategorySql(category) {
+  switch (category) {
+    case '1-2':
+      return 'partySize <= 2';
+    case '3-4':
+      return 'partySize BETWEEN 3 AND 4';
+    case '5-6':
+      return 'partySize BETWEEN 5 AND 6';
+    case '7+':
+      return 'partySize >= 7';
+    default:
+      return null;
+  }
+}
+
+async function getNextWaitingByCategory(category) {
+  const where = getCategorySql(category);
+  if (!where) return null;
+  return get(`SELECT * FROM queue WHERE status='waiting' AND ${where} ORDER BY id ASC LIMIT 1`);
+}
+
+function getCategoryLabel(category) {
+  switch (category) {
+    case '1-2':
+      return '1-2位';
+    case '3-4':
+      return '3-4位';
+    case '5-6':
+      return '5-6位';
+    case '7+':
+      return '7位以上';
+    default:
+      return '未知類別';
+  }
 }
 
 async function getActiveQueueByDevice(deviceToken) {
@@ -176,8 +212,15 @@ app.get('/queue', async (req, res) => {
 
 app.post('/queue/next', async (req, res) => {
   try {
-    const next = await get("SELECT * FROM queue WHERE status='waiting' ORDER BY id ASC LIMIT 1");
-    if (!next) return res.json({ message: '目前沒有等待中的號碼', current: null });
+    const category = req.query.category;
+    let next;
+    if (category) {
+      next = await getNextWaitingByCategory(category);
+      if (!next) return res.json({ message: `目前沒有 ${getCategoryLabel(category)} 的等待號碼`, current: null });
+    } else {
+      next = await get("SELECT * FROM queue WHERE status='waiting' ORDER BY id ASC LIMIT 1");
+      if (!next) return res.json({ message: '目前沒有等待中的號碼', current: null });
+    }
     const result = await callWaitingQueueRow(next.id);
     if (result.error) {
       return res.status(result.status || 500).json({ error: result.error });

@@ -77,6 +77,13 @@ export default function Home() {
   const [partySize, setPartySize] = useState(2);
   const router = useRouter();
 
+  function getPartyLabel(size) {
+    if (size <= 2) return '1-2位';
+    if (size <= 4) return '3-4位';
+    if (size <= 6) return '5-6位';
+    return '7位以上';
+  }
+
   const waitingAheadRows = useMemo(() => {
     if (!myQueue || myQueue.status !== 'waiting') return [];
     return queueInfo.queue.filter((item) => item.status === 'waiting' && item.id < myQueue.id);
@@ -127,7 +134,7 @@ export default function Home() {
     }
   }
 
-  async function takeNumber() {
+  async function takeNumber(chosenSize = partySize) {
     if (!API) {
       setMessage('尚未設定後端 API 網址，暫時無法取號。');
       return;
@@ -137,14 +144,15 @@ export default function Home() {
       const res = await fetch(`${API}/queue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceToken: token, partySize })
+        body: JSON.stringify({ deviceToken: token, partySize: chosenSize })
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || '取號失敗');
       }
       setMyQueue(data);
-      setMessage(`取號成功，你的號碼是 ${data.number}（${data.partySize || partySize} 位）`);
+      const label = getPartyLabel(data.partySize || chosenSize);
+      setMessage(`取號成功，你的號碼是 ${data.number}（${label}）`);
       await loadQueueBoard();
       await loadMyState(token);
     } catch {
@@ -210,11 +218,9 @@ export default function Home() {
             </div>
 
             {message && <div className={messageClass}>{message}</div>}
-
             {partyPickerBlock}
-
             <div className="actionBlock">
-              <button type="button" className="orangeBtn" onClick={takeNumber}>我要取號</button>
+              <button type="button" className="orangeBtn" onClick={() => takeNumber()}>我要取號</button>
               <button type="button" className="outlineBtn" onClick={() => router.push('/menu')}>查看 / 修改預選餐點</button>
             </div>
 
@@ -231,7 +237,7 @@ export default function Home() {
               <div className="statusLabel">目前號碼狀態</div>
               <div className="bigNumber">{myQueue.number}</div>
               <div className="statusText">{statusText}</div>
-              <div className="partyMeta">用餐人數：{myQueue.partySize ?? 1} 位</div>
+              <div className="partyMeta">用餐人數：{Number(myQueue.partySize) || 1}</div>
               {myQueue.status === 'called' && <div className="callBanner">請先向店員出示取號資訊</div>}
               {myQueue.status === 'skipped' && (
                 <div className="skipHint">此號已過號。若要繼續候位請重新取號，或向櫃台詢問。</div>
@@ -246,9 +252,6 @@ export default function Home() {
               <div className="boardCard">
                 <div className="boardLabel">前方等待</div>
                 <div className="boardValue">{myQueue.status === 'waiting' ? `${waitingBeforeCount} 組` : '--'}</div>
-                {myQueue.status === 'waiting' && (
-                  <div className="boardSub">約 {waitingBeforeGuests} 位在你之前</div>
-                )}
               </div>
             </div>
 
@@ -265,8 +268,11 @@ export default function Home() {
 
             <div className="actionBlock">
               {myQueue.status === 'skipped' && (
-                <button type="button" className="outlineBtn" onClick={takeNumber}>重新取號</button>
+                <button type="button" className="outlineBtn" onClick={() => takeNumber()}>重新取號</button>
               )}
+              {/* 測試用
+              {partyPickerBlock}
+              <button type="button" className="orangeBtn" onClick={() => takeNumber()}>我要取號</button> */}
               <button type="button" className="outlineBtn" onClick={() => router.push('/menu')}>查看 / 修改預選餐點</button>
             </div>
 
@@ -275,6 +281,7 @@ export default function Home() {
             </div>
           </section>
         )}
+
       </div>
     </div>
   );
