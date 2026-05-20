@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useLiff } from '../context/LiffContext';
+import { getStoredLineUserId, openAddFriendUrl, isDevBrowserAllowed } from '../lib/liff';
 
 function getApiBase() {
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -70,6 +72,7 @@ function PartySizeStepper({ label, className = '', partySize, setPartySize }) {
 }
 
 export default function Home() {
+  const { liffReady, inClient, lineUserId: liffUserId, friendship, hasLiff, liffError } = useLiff();
   const [queueInfo, setQueueInfo] = useState({ current: null, waitingCount: 0, queue: [] });
   const [myQueue, setMyQueue] = useState(null);
   const [message, setMessage] = useState(API ? '' : '目前尚未設定後端 API 網址，請先設定 NEXT_PUBLIC_API_URL。');
@@ -83,6 +86,12 @@ export default function Home() {
     if (size <= 6) return '5-6位';
     return '7位以上';
   }
+
+  const lineUserId = liffUserId || getStoredLineUserId();
+  const canUseLine = hasLiff && inClient && lineUserId;
+  const canUseBrowser = !hasLiff || isDevBrowserAllowed();
+  const mustScanLine = liffReady && hasLiff && !inClient && !canUseBrowser;
+  const needsAddFriend = canUseLine && friendship && !friendship.friendFlag;
 
   const waitingAheadRows = useMemo(() => {
     if (!myQueue || myQueue.status !== 'waiting') return [];
@@ -116,10 +125,15 @@ export default function Home() {
     }
   }
 
-  async function loadMyState(token) {
-    if (!API || !token) return;
+  async function loadMyState() {
+    if (!API) return;
     try {
-      const res = await fetch(`${API}/customer-state/${token}`);
+      let res;
+      if (lineUserId) {
+        res = await fetch(`${API}/customer-state/line/${encodeURIComponent(lineUserId)}`);
+      } else if (deviceToken) {
+        res = await fetch(`${API}/customer-state/${deviceToken}`);
+      } else return;
       const data = await res.json();
       setMyQueue(data.activeQueue || null);
       if (data.activeQueue?.status === 'called') {
@@ -139,12 +153,19 @@ export default function Home() {
       setMessage('尚未設定後端 API 網址，暫時無法取號。');
       return;
     }
+    if (mustScanLine) {
+      setMessage('請使用 LINE 掃描門口 QR 取號，以接收叫號與用餐時間通知。');
+      return;
+    }
     const token = deviceToken || getDeviceToken();
+    const body = { partySize: chosenSize };
+    if (lineUserId) body.lineUserId = lineUserId;
+    else body.deviceToken = token;
     try {
       const res = await fetch(`${API}/queue`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceToken: token, partySize: chosenSize })
+        body: JSON.stringify(body)
       });
       const data = await res.json();
       if (!res.ok) {
@@ -152,9 +173,9 @@ export default function Home() {
       }
       setMyQueue(data);
       const label = getPartyLabel(data.partySize || chosenSize);
-      setMessage(`取號成功，你的號碼是 ${data.number}（${label}）`);
+      setMessage(`取號成功，你的號碼是 ${data.number}（${label}）${lineUserId ? '，LINE 通知已啟用' : ''}`);
       await loadQueueBoard();
-      await loadMyState(token);
+      await loadMyState();
     } catch {
       setMessage('取號失敗，請稍後再試。');
     }
@@ -165,13 +186,17 @@ export default function Home() {
     setDeviceToken(token);
     if (!API) return;
     loadQueueBoard();
-    loadMyState(token);
+  }, []);
+
+  useEffect(() => {
+    if (!liffReady) return;
+    loadMyState();
     const timer = setInterval(() => {
       loadQueueBoard();
-      loadMyState(token);
+      loadMyState();
     }, 3000);
     return () => clearInterval(timer);
-  }, []);
+  }, [liffReady, lineUserId, deviceToken]);
 
   useEffect(() => {
     if (myQueue?.status === 'skipped') {
@@ -203,6 +228,35 @@ export default function Home() {
           <div className="navAction">自取</div>
         </div>
 
+        {!liffReady && (
+          <div className="listCard"><div className="sectionText">載入中…</div></div>
+        )}
+
+        {liffReady && mustScanLine && (
+          <div className="listCard">
+            <div className="sectionTitle">請使用 LINE 掃碼</div>
+            <div className="sectionText">請用 LINE 掃描門口 QR 開啟此頁取號，才能收到叫號、過號與用餐時間 LINE 通知。</div>
+          </div>
+        )}
+
+        {liffReady && liffError && (
+          <div className="alertError">LIFF 載入失敗：{liffError}</div>
+        )}
+
+        {needsAddFriend && (
+          <div className="listCard">
+            <div className="sectionTitle">開啟 LINE 通知</div>
+            <div className="sectionText">加入官方帳號好友後，才能收到叫號與用餐時間推播。</div>
+            <button type="button" className="outlineBtn" style={{ marginTop: 12 }} onClick={openAddFriendUrl}>加入官方帳號好友</button>
+          </div>
+        )}
+
+        {canUseLine && !needsAddFriend && (
+          <div className="listCard subtle">
+            <div className="sectionText">已連結 LINE，叫號與用餐時間將透過 LINE 通知。</div>
+          </div>
+        )}
+
         {!hasTicket && (
           <section className="queuePhase pre" aria-label="取號前">
             <div className="boardRow">
@@ -220,13 +274,13 @@ export default function Home() {
             {message && <div className={messageClass}>{message}</div>}
             {partyPickerBlock}
             <div className="actionBlock">
-              <button type="button" className="orangeBtn" onClick={() => takeNumber()}>我要取號</button>
+              <button type="button" className="orangeBtn" onClick={() => takeNumber()} disabled={mustScanLine}>我要取號</button>
               <button type="button" className="outlineBtn" onClick={() => router.push('/menu')}>查看 / 修改預選餐點</button>
             </div>
 
             <div className="listCard">
               <div className="sectionTitle">取號說明</div>
-              <div className="sectionText">同一台裝置同時間只能持有一張尚未完成的號碼。到號時，此頁會自動顯示通知。</div>
+              <div className="sectionText">請使用 LINE 掃碼取號以啟用通知。輪到時會透過 LINE 推播，此頁亦會同步更新。</div>
             </div>
           </section>
         )}
@@ -277,7 +331,7 @@ export default function Home() {
             </div>
 
             <div className="listCard subtle">
-              <div className="sectionText">號碼狀態約每 3 秒自動更新。輪到你時請留意本頁通知。</div>
+              <div className="sectionText">號碼狀態約每 3 秒自動更新。已綁定 LINE 時亦會收到推播通知。</div>
             </div>
           </section>
         )}

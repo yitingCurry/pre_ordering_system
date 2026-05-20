@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useLiff } from '../context/LiffContext';
+import { getStoredLineUserId } from '../lib/liff';
 
 function getApiBase() {
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -135,6 +137,8 @@ function getDeviceToken() {
 }
 
 export default function Menu() {
+  const { liffReady, lineUserId: liffUserId } = useLiff();
+  const lineUserId = liffUserId || getStoredLineUserId();
   const [queue, setQueue] = useState(null);
   const [selected, setSelected] = useState({});
   const [note, setNote] = useState('');
@@ -197,10 +201,16 @@ export default function Menu() {
   }
 
   async function loadMyState() {
-    const token = getDeviceToken();
-    if (!API || !token) return;
+    if (!API) return;
     try {
-      const res = await fetch(`${API}/customer-state/${token}`);
+      let res;
+      if (lineUserId) {
+        res = await fetch(`${API}/customer-state/line/${encodeURIComponent(lineUserId)}`);
+      } else {
+        const token = getDeviceToken();
+        if (!token) return;
+        res = await fetch(`${API}/customer-state/${token}`);
+      }
       const data = await res.json();
       setQueue(data.activeQueue || null);
       const submitted = !!data.order;
@@ -320,9 +330,9 @@ export default function Menu() {
   }
 
   useEffect(() => {
-    if (!API) return;
+    if (!API || !liffReady) return;
     loadMyState();
-  }, []);
+  }, [liffReady, lineUserId]);
 
   return (
     <div className="customerPage">
