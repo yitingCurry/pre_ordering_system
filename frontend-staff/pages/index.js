@@ -135,6 +135,39 @@ export default function Staff() {
     }
   }
 
+  async function guestLeft(queueId, queueNumber) {
+    if (!API) {
+      setMessage('尚未設定後端 API 網址，暫時無法操作。');
+      return;
+    }
+    if (!window.confirm(`確認號碼 ${queueNumber} 已離開？\n將停止用餐時間提醒，並透過 LINE 發送回饋問卷（若已綁定）。`)) {
+      return;
+    }
+    setActionLoadingId(queueId);
+    try {
+      const res = await fetch(`${API}/queue/${queueId}/leave`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '結束用餐失敗');
+      if (data.feedbackSent) {
+        setMessage(`號碼 ${data.number} 已結束用餐，已發送 LINE 回饋問卷。`);
+      } else if (data.feedbackSkipped) {
+        setMessage(`號碼 ${data.number} 已結束用餐（客人先前已提交回饋）。`);
+      } else if (!data.lineUserId) {
+        setMessage(`號碼 ${data.number} 已結束用餐（未綁定 LINE，無法發送回饋）。`);
+      } else {
+        setMessage(`號碼 ${data.number} 已結束用餐（回饋訊息發送失敗，請稍後再試）。`);
+      }
+      await loadQueue();
+      if (selectedQueueId === queueId) {
+        setSelectedQueueNumber(data.number);
+      }
+    } catch (e) {
+      setMessage(e.message || '結束用餐失敗');
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
   async function updateQueueStatus(queueId, action) {
     if (!API) {
       setMessage('尚未設定後端 API 網址，暫時無法更新狀態。');
@@ -242,8 +275,9 @@ export default function Staff() {
                 {category.items.map((item) => {
                   const isCalled = item.status === 'called';
                   const isWaiting = item.status === 'waiting';
+                  const isSeated = item.status === 'seated';
                   const calledActionDisabled = !isCalled || actionLoadingId === item.id;
-                  const waitingBusy = actionLoadingId === item.id;
+                  const seatedBusy = actionLoadingId === item.id;
                   const party = item.partySize != null && item.partySize > 0 ? item.partySize : 1;
                   return (
                     <div key={item.id} className="queueItem" onClick={() => loadOrder(item.id, item.number)}>
@@ -273,6 +307,16 @@ export default function Staff() {
                             disabled={calledActionDisabled}
                             onClick={(e) => { e.stopPropagation(); updateQueueStatus(item.id, 'seat'); }}
                           >確認入座</button>
+                        </div>
+                      )}
+                      {isSeated && (
+                        <div className="queueActions">
+                          <button
+                            type="button"
+                            className="actionBtn leaveBtn"
+                            disabled={seatedBusy}
+                            onClick={(e) => { e.stopPropagation(); guestLeft(item.id, item.number); }}
+                          >客人已離開</button>
                         </div>
                       )}
                     </div>

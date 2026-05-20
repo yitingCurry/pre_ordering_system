@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: restaurant-mvp-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /var/data/restaurant.db
+      - key: LINE_CHANNEL_SECRET
+        sync: false
+      - key: LINE_CHANNEL_ACCESS_TOKEN
+        sync: false
+      - key: SEATED_DURATION_MINUTES
+        value: "60"
+      - key: SEATED_WARN_BEFORE_MINUTES
+        value: "10"
+      - key: ALMOST_CALLED_AHEAD_COUNT
+        value: "2"
+      - key: CORS_ORIGIN
+        sync: false
