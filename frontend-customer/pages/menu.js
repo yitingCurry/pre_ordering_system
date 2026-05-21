@@ -136,6 +136,53 @@ function getDeviceToken() {
   return localStorage.getItem('deviceToken') || '';
 }
 
+const REVIEW_TRUNCATE = 80;
+
+function StarRating({ rating }) {
+  // rating 可能是數字或字串如 "5" 或 "4/5"，先嘗試解析
+  const num = parseFloat(String(rating));
+  if (!num || isNaN(num)) return <span style={{ color: '#9a3412', fontSize: 13 }}>無星等</span>;
+  const full = Math.floor(num);
+  const half = num - full >= 0.5;
+  const empty = 5 - full - (half ? 1 : 0);
+  return (
+    <span style={{ fontSize: 14, letterSpacing: 1 }}>
+      {'★'.repeat(full)}
+      {half ? '½' : ''}
+      {'☆'.repeat(empty)}
+    </span>
+  );
+}
+
+function ReviewCard({ review }) {
+  const [expanded, setExpanded] = useState(false);
+  const text = review.content || '';
+  const isLong = text.length > REVIEW_TRUNCATE;
+  return (
+    <div style={{ padding: '12px 0', borderBottom: '1px dashed #e5e7eb' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13, fontWeight: 800, color: '#9a3412', marginBottom: 6 }}>
+        <span>{review.reviewer || '匿名用戶'}</span>
+        <StarRating rating={review.rating} />
+      </div>
+      <div style={{ fontSize: 14, lineHeight: 1.6, color: '#374151', whiteSpace: 'pre-wrap' }}>
+        {expanded || !isLong ? text : text.slice(0, REVIEW_TRUNCATE)}
+        {isLong && !expanded && (
+          <span
+            onClick={() => setExpanded(true)}
+            style={{ color: '#2563eb', cursor: 'pointer', fontWeight: 600 }}
+          >...更多</span>
+        )}
+        {isLong && expanded && (
+          <span
+            onClick={() => setExpanded(false)}
+            style={{ color: '#2563eb', cursor: 'pointer', fontWeight: 600 }}
+          > 收起</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Menu() {
   const { liffReady, lineUserId: liffUserId } = useLiff();
   const lineUserId = liffUserId || getStoredLineUserId();
@@ -147,6 +194,7 @@ export default function Menu() {
   const [savedSummary, setSavedSummary] = useState('');
   const [activePage, setActivePage] = useState('飲品');
   const [showConfirm, setShowConfirm] = useState(false);
+  const [reviewModal, setReviewModal] = useState({ open: false, item: null, loading: false, reviews: [], error: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedSnapshot, setSubmittedSnapshot] = useState({});
   const router = useRouter();
@@ -298,6 +346,22 @@ export default function Menu() {
     setShowConfirm(true);
   }
 
+  async function openReviews(item) {
+    setReviewModal({ open: true, item, loading: true, reviews: [], error: '' });
+    if (!API) {
+      setReviewModal({ open: true, item, loading: false, reviews: [], error: '目前尚未設定後端 API 網址。' });
+      return;
+    }
+    try {
+      const res = await fetch(`${API}/menu-items/${encodeURIComponent(item.id)}/reviews?limit=20`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '取得評論失敗');
+      setReviewModal({ open: true, item, loading: false, reviews: data.reviews || [], error: '' });
+    } catch {
+      setReviewModal({ open: true, item, loading: false, reviews: [], error: '目前無法載入這道菜的評論。' });
+    }
+  }
+
   async function submitOrder() {
     if (!API) {
       setMessage('尚未設定後端 API 網址，暫時無法送出餐點。');
@@ -369,6 +433,13 @@ export default function Menu() {
               <input type="checkbox" checked={!!selected[item.id]} onChange={() => toggleItem(item)} disabled={false} />
               <div className="foodInfo">
                 <div className="foodName">{item.name}</div>
+                <button
+                  type="button"
+                  onClick={(e) => { e.preventDefault(); openReviews(item); }}
+                  style={{ marginTop: 7, border: 'none', background: '#f3f4f6', color: '#4b5563', borderRadius: 999, padding: '7px 10px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+                >
+                  查看評論
+                </button>
               </div>
               <div className="foodPrice">${item.price}</div>
             </label>
@@ -441,6 +512,29 @@ export default function Menu() {
               <div className="modalActions">
                 <button type="button" className="outlineBtn modalBtn" onClick={() => setShowConfirm(false)}>返回修改</button>
                 <button type="button" className="orangeBtn modalBtn" onClick={submitOrder}>確認送出（送出後僅可加點）</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {reviewModal.open && (
+          <div className="modalOverlay">
+            <div className="confirmModal">
+              <div className="modalTitle">{reviewModal.item?.name} 的相關評論</div>
+              {reviewModal.loading && <div className="sectionText">載入中...</div>}
+              {reviewModal.error && <div className="alertError">{reviewModal.error}</div>}
+              {!reviewModal.loading && !reviewModal.error && reviewModal.reviews.length === 0 && (
+                <div className="sectionText">目前 Google 評論裡還沒有明確提到這道菜。</div>
+              )}
+              {!reviewModal.loading && reviewModal.reviews.length > 0 && (
+                <div style={{ maxHeight: 360, overflow: 'auto', marginTop: 8 }}>
+                  {reviewModal.reviews.map((review, idx) => (
+                    <ReviewCard key={`${review.reviewer || 'guest'}-${idx}`} review={review} />
+                  ))}
+                </div>
+              )}
+              <div className="modalActions" style={{ gridTemplateColumns: '1fr' }}>
+                <button type="button" className="orangeBtn modalBtn" onClick={() => setReviewModal({ open: false, item: null, loading: false, reviews: [], error: '' })}>關閉</button>
               </div>
             </div>
           </div>

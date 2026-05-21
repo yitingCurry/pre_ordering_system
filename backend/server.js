@@ -102,6 +102,16 @@ async function initDb() {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (queueId) REFERENCES queue(id)
   )`);
+  await runSql(`CREATE TABLE IF NOT EXISTS dish_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    menuItemId TEXT NOT NULL,
+    dishName TEXT NOT NULL,
+    reviewer TEXT,
+    rating TEXT,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  await runSql('CREATE INDEX IF NOT EXISTS idx_dish_reviews_menu_item_id ON dish_reviews(menuItemId)');
   await ensureColumn('queue', 'deviceToken', 'TEXT');
   await ensureColumn('queue', 'partySize', 'INTEGER NOT NULL DEFAULT 1');
   await ensureColumn('queue', 'lineUserId', 'TEXT');
@@ -427,6 +437,23 @@ app.get('/order/:queueId', async (req, res) => {
     res.json(parseOrder(order));
   } catch {
     res.status(500).json({ error: '取得預點餐失敗' });
+  }
+});
+
+app.get('/menu-items/:id/reviews', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const rows = await allSql(
+      `SELECT reviewer, rating, content
+       FROM dish_reviews
+       WHERE menuItemId = ?
+       ORDER BY id DESC
+       LIMIT ?`,
+      [req.params.id, limit]
+    );
+    res.json({ menuItemId: req.params.id, count: rows.length, reviews: rows });
+  } catch {
+    res.status(500).json({ error: '取得餐點評論失敗' });
   }
 });
 
