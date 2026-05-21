@@ -131,6 +131,63 @@ const menu = [
 
 const pages = ['本店特別推薦', '炒粉/面/飯', '燴飯', '每日限量', '湯麵', '炒公仔麵', '本店特色', '冷熱飲品', '三文治', '多士', '甜品'];
 
+const CONFIRM_UPSELL_IDS = ['071', '080', '090'];
+
+function FoodCard({ item, selected, submittedSnapshot, onToggleItem, onUpdateQuantity, onUpdateField, onToggleOption, onOpenReviews }) {
+  return (
+    <div className="foodCard">
+      <label className="foodTop">
+        <input type="checkbox" checked={!!selected[item.id]} onChange={() => onToggleItem(item)} />
+        <div className="foodInfo">
+          <div className="foodName">{item.name}</div>
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); onOpenReviews(item); }}
+            style={{ marginTop: 7, border: 'none', background: '#f3f4f6', color: '#4b5563', borderRadius: 999, padding: '7px 10px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+          >
+            查看評論
+          </button>
+        </div>
+        <div className="foodPrice">${item.price}</div>
+      </label>
+
+      {!!selected[item.id] && (
+        <div className="configPanel">
+          <div className="controlRow">
+            <div className="controlLabel">數量</div>
+            <div className="qtyBox">
+              <button type="button" className="qtyBtn" onClick={() => onUpdateQuantity(item.id, -1)} disabled={submittedSnapshot[item.id] && (selected[item.id].quantity || 1) <= (submittedSnapshot[item.id].quantity || 1)}>-</button>
+              <div className="qtyValue">{selected[item.id].quantity || 1}</div>
+              <button type="button" className="qtyBtn" onClick={() => onUpdateQuantity(item.id, 1)}>+</button>
+            </div>
+          </div>
+
+          <div className="fieldBlock">
+            <div className="fieldLabel">規格</div>
+            <div className="selectorRow">
+              {item.variants.map((variant) => (
+                <button key={variant} type="button" className={`selectChip ${selected[item.id].variant === variant ? 'active' : ''}`} onClick={() => onUpdateField(item, 'variant', variant)} disabled={!!submittedSnapshot[item.id]}>{variant}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="fieldBlock">
+            <div className="fieldLabel">加料 / 偏好</div>
+            <div className="optionGrid clean">
+              {item.options.map((option) => (
+                <label key={option} className="chip orange">
+                  <input type="checkbox" checked={selected[item.id]?.options.includes(option) || false} onChange={() => onToggleOption(item, option)} disabled={!!submittedSnapshot[item.id]} />
+                  <span>{option}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function getDeviceToken() {
   if (typeof window === 'undefined') return '';
   return localStorage.getItem('deviceToken') || '';
@@ -207,6 +264,11 @@ export default function Menu() {
   }, 0), [selected]);
 
   const itemCount = useMemo(() => Object.values(selected).reduce((sum, item) => sum + (item.quantity || 1), 0), [selected]);
+
+  const confirmUpsellItems = useMemo(
+    () => CONFIRM_UPSELL_IDS.map((id) => menu.find((m) => m.id === id)).filter(Boolean),
+    []
+  );
 
   const confirmItems = useMemo(() => Object.entries(selected).map(([id, value]) => {
     const item = menu.find((m) => m.id === id);
@@ -428,56 +490,17 @@ export default function Menu() {
         </div>
 
         {currentMenu.map((item) => (
-          <div key={item.id} className="foodCard">
-            <label className="foodTop">
-              <input type="checkbox" checked={!!selected[item.id]} onChange={() => toggleItem(item)} disabled={false} />
-              <div className="foodInfo">
-                <div className="foodName">{item.name}</div>
-                <button
-                  type="button"
-                  onClick={(e) => { e.preventDefault(); openReviews(item); }}
-                  style={{ marginTop: 7, border: 'none', background: '#f3f4f6', color: '#4b5563', borderRadius: 999, padding: '7px 10px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
-                >
-                  查看評論
-                </button>
-              </div>
-              <div className="foodPrice">${item.price}</div>
-            </label>
-
-            {!!selected[item.id] && (
-              <div className="configPanel">
-                <div className="controlRow">
-                  <div className="controlLabel">數量</div>
-                  <div className="qtyBox">
-                    <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, -1)} disabled={submittedSnapshot[item.id] && (selected[item.id].quantity || 1) <= (submittedSnapshot[item.id].quantity || 1)}>-</button>
-                    <div className="qtyValue">{selected[item.id].quantity || 1}</div>
-                    <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, 1)}>+</button>
-                  </div>
-                </div>
-
-                <div className="fieldBlock">
-                  <div className="fieldLabel">規格</div>
-                  <div className="selectorRow">
-                    {item.variants.map((variant) => (
-                      <button key={variant} type="button" className={`selectChip ${selected[item.id].variant === variant ? 'active' : ''}`} onClick={() => updateField(item, 'variant', variant)} disabled={!!submittedSnapshot[item.id]}>{variant}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="fieldBlock">
-                  <div className="fieldLabel">加料 / 偏好</div>
-                  <div className="optionGrid clean">
-                    {item.options.map((option) => (
-                      <label key={option} className="chip orange">
-                        <input type="checkbox" checked={selected[item.id]?.options.includes(option) || false} onChange={() => toggleOption(item, option)} disabled={!!submittedSnapshot[item.id]} />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <FoodCard
+            key={item.id}
+            item={item}
+            selected={selected}
+            submittedSnapshot={submittedSnapshot}
+            onToggleItem={toggleItem}
+            onUpdateQuantity={updateQuantity}
+            onUpdateField={updateField}
+            onToggleOption={toggleOption}
+            onOpenReviews={openReviews}
+          />
         ))}
 
         <textarea className="textarea modern" placeholder="備註（例如：少冰、先做飲品）" value={note} onChange={(e) => setNote(e.target.value)} />
@@ -504,6 +527,22 @@ export default function Menu() {
                     <div className="confirmMeta">種類：{item.category || '未填'}｜規格：{item.variant || '未填'}</div>
                     <div className="confirmMeta">{item.options.length ? item.options.join('、') : '無其他偏好'}</div>
                   </div>
+                ))}
+              </div>
+              <div className="confirmUpsellSection">
+                <div className="confirmUpsellTitle">還要加點什麼嗎?</div>
+                {confirmUpsellItems.map((item) => (
+                  <FoodCard
+                    key={item.id}
+                    item={item}
+                    selected={selected}
+                    submittedSnapshot={submittedSnapshot}
+                    onToggleItem={toggleItem}
+                    onUpdateQuantity={updateQuantity}
+                    onUpdateField={updateField}
+                    onToggleOption={toggleOption}
+                    onOpenReviews={openReviews}
+                  />
                 ))}
               </div>
               <div className="confirmNote">備註：{note || '無'}</div>

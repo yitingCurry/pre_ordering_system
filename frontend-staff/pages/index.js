@@ -36,6 +36,8 @@ export default function Staff() {
   const [order, setOrder] = useState(null);
   const [message, setMessage] = useState(API ? '' : '目前尚未設定後端 API 網址，請先設定 NEXT_PUBLIC_API_URL。');
   const [confirmClear, setConfirmClear] = useState(false);
+  const [todayTotal, setTodayTotal] = useState(null);
+  const [todayTotalLoading, setTodayTotalLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
   const isCallNextDisabled = actionLoadingId !== null;
@@ -130,6 +132,29 @@ export default function Staff() {
     finally { setActionLoadingId(null); }
   }
 
+  async function toggleTodayOrderTotal() {
+    if (todayTotal) {
+      setTodayTotal(null);
+      return;
+    }
+    if (!API) {
+      setMessage('尚未設定後端 API 網址，暫時無法查詢。');
+      return;
+    }
+    setTodayTotalLoading(true);
+    try {
+      const res = await fetch(`${API}/orders/today-total`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '查詢失敗');
+      setTodayTotal(data);
+    } catch (e) {
+      setTodayTotal(null);
+      setMessage(e.message || '無法取得今日訂單金額');
+    } finally {
+      setTodayTotalLoading(false);
+    }
+  }
+
   async function loadOrder(queueId, queueNumber) {
     if (!API) return;
     setSelectedQueueId(queueId);
@@ -160,12 +185,6 @@ export default function Staff() {
   }));
 
   const seatedCount = queueData.queue.filter((i) => i.status === 'seated').length;
-  const orderSubtotal = order
-    ? order.items.reduce((sum, item) => {
-        const found = /* menu lookup removed for brevity — replace with your menu import */ null;
-        return sum + (found ? found.price * (item.quantity || 1) : 0);
-      }, 0)
-    : 0;
 
   return (
     <div className="page">
@@ -218,6 +237,29 @@ export default function Staff() {
           ))}
           <button className="clearBtn" onClick={() => setConfirmClear(true)}>清空今日列隊</button>
         </div>
+
+        <div className="staffSecondaryActions">
+          <button
+            type="button"
+            className={`summaryBtn${todayTotal ? ' active' : ''}`}
+            onClick={toggleTodayOrderTotal}
+            disabled={todayTotalLoading || isCallNextDisabled}
+          >
+            {todayTotalLoading ? '計算中…' : todayTotal ? '隱藏今日預點餐金額總計' : '今日預點餐金額總計'}
+          </button>
+        </div>
+
+        {todayTotal && (
+          <div className="todayTotalPanel">
+            <div className="todayTotalMain">
+              <span className="todayTotalLabel">今日預點餐金額總計</span>
+              <span className="todayTotalValue">${todayTotal.total.toLocaleString()}</span>
+            </div>
+            <div className="todayTotalMeta">
+              {todayTotal.date} · 共 {todayTotal.orderCount} 筆預點餐
+            </div>
+          </div>
+        )}
 
         {message && <div className="alertMsg">{message}</div>}
 

@@ -7,6 +7,7 @@ const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const notify = require('./line/notify');
+const { sumOrderItems } = require('./menuPrices');
 const { createLineWebhookHandler } = require('./line/webhook');
 const { startSeatTimerJob } = require('./line/seatedTimer');
 const { isLineConfigured } = require('./line/client');
@@ -437,6 +438,28 @@ app.get('/order/:queueId', async (req, res) => {
     res.json(parseOrder(order));
   } catch {
     res.status(500).json({ error: '取得預點餐失敗' });
+  }
+});
+
+app.get('/orders/today-total', async (req, res) => {
+  try {
+    const rows = await allSql(
+      `SELECT o.id, o.queueId, o.items, o.created_at, q.number AS queueNumber
+       FROM orders o
+       LEFT JOIN queue q ON q.id = o.queueId
+       WHERE date(o.created_at, 'localtime') = date('now', 'localtime')`
+    );
+    let total = 0;
+    const orders = rows.map((row) => {
+      const items = JSON.parse(row.items);
+      const amount = sumOrderItems(items);
+      total += amount;
+      return { id: row.id, queueId: row.queueId, queueNumber: row.queueNumber, amount };
+    });
+    res.json({ date: new Date().toLocaleDateString('zh-TW'), orderCount: orders.length, total, orders });
+  } catch (e) {
+    console.error('today-total', e);
+    res.status(500).json({ error: '取得今日訂單金額失敗' });
   }
 });
 
