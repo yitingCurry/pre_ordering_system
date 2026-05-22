@@ -297,7 +297,13 @@ app.post('/queue', async (req, res) => {
 
 app.get('/queue', async (req, res) => {
   try {
-    const rows = await allSql('SELECT * FROM queue ORDER BY id ASC');
+    const rows = await allSql(`
+      SELECT
+        q.*,
+        EXISTS(SELECT 1 FROM orders o WHERE o.queueId = q.id) AS hasOrder
+      FROM queue q
+      ORDER BY q.id ASC
+    `);
     const current = rows.find((r) => r.status === 'called') || null;
     const waitingCount = rows.filter((r) => r.status === 'waiting').length;
     res.json({ current, waitingCount, queue: rows });
