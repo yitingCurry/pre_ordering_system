@@ -7,10 +7,12 @@ const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const notify = require('./line/notify');
-const { sumOrderItems } = require('./menuPrices');
+const { countWaitingAhead } = require('./line/queueHelpers');
 const { createLineWebhookHandler } = require('./line/webhook');
 const { startSeatTimerJob } = require('./line/seatedTimer');
 const { isLineConfigured } = require('./line/client');
+const { formatFeedbackItem } = require('./line/feedback');
+const { labelRating } = require('./line/feedbackLabels');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -121,6 +123,11 @@ async function initDb() {
   await ensureColumn('queue', 'seatedWarn10SentAt', 'DATETIME');
   await ensureColumn('queue', 'seatedReminderSentAt', 'DATETIME');
   await ensureColumn('queue', 'feedbackRequestedAt', 'DATETIME');
+  await ensureColumn('feedback_responses', 'rating_wait', 'TEXT');
+  await ensureColumn('feedback_responses', 'rating_food', 'TEXT');
+  await ensureColumn('feedback_responses', 'rating_service', 'TEXT');
+  await ensureColumn('feedback_responses', 'comment', 'TEXT');
+  await ensureColumn('feedback_responses', 'awaiting_comment', 'INTEGER NOT NULL DEFAULT 0');
 }
 
 // async function finishCurrentCalled() {
@@ -135,7 +142,8 @@ async function callWaitingQueueRow(queueId) {
   }
   await runSql("UPDATE queue SET status = 'called' WHERE id = ?", [queueId]);
   const called = await getSql('SELECT * FROM queue WHERE id = ?', [queueId]);
-  notify.pushCalled(called).catch((e) => console.error('pushCalled', e));
+  const orderRow = await getSql('SELECT * FROM orders WHERE queueId = ?', [queueId]);
+  notify.pushCalled(called, parseOrder(orderRow)).catch((e) => console.error('pushCalled', e));
   return { called };
 }
 
@@ -276,6 +284,11 @@ app.post('/queue', async (req, res) => {
       [nextNumber, 'waiting', token, partySize, lineUserId || null]
     );
     const created = await getSql('SELECT * FROM queue WHERE id = ?', [result.lastID]);
+    if (created.lineUserId) {
+      countWaitingAhead(dbApi, created.id)
+        .then((ahead) => notify.pushQueueTaken(created, ahead))
+        .catch((e) => console.error('pushQueueTaken', e));
+    }
     res.status(201).json(created);
   } catch {
     res.status(500).json({ error: '建立號碼失敗' });
@@ -441,25 +454,26 @@ app.get('/order/:queueId', async (req, res) => {
   }
 });
 
-app.get('/orders/today-total', async (req, res) => {
+app.get('/feedback/today', async (req, res) => {
   try {
     const rows = await allSql(
-      `SELECT o.id, o.queueId, o.items, o.created_at, q.number AS queueNumber
-       FROM orders o
-       LEFT JOIN queue q ON q.id = o.queueId
-       WHERE date(o.created_at, 'localtime') = date('now', 'localtime')`
+      `SELECT f.*, q.number AS queueNumber
+       FROM feedback_responses f
+       JOIN queue q ON q.id = f.queueId
+       WHERE date(f.created_at) = date('now', 'localtime')
+       ORDER BY f.created_at DESC`
     );
-    let total = 0;
-    const orders = rows.map((row) => {
-      const items = JSON.parse(row.items);
-      const amount = sumOrderItems(items);
-      total += amount;
-      return { id: row.id, queueId: row.queueId, queueNumber: row.queueNumber, amount };
-    });
-    res.json({ date: new Date().toLocaleDateString('zh-TW'), orderCount: orders.length, total, orders });
+    const items = rows.map((row) => ({
+      ...formatFeedbackItem(row),
+      ratingLabel: labelRating(row.rating),
+      ratingWaitLabel: labelRating(row.rating_wait),
+      ratingFoodLabel: labelRating(row.rating_food),
+      ratingServiceLabel: labelRating(row.rating_service)
+    }));
+    res.json({ items, count: items.length });
   } catch (e) {
-    console.error('today-total', e);
-    res.status(500).json({ error: '取得今日訂單金額失敗' });
+    console.error('feedback/today', e);
+    res.status(500).json({ error: '取得今日回饋失敗' });
   }
 });
 
