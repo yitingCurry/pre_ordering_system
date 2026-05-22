@@ -4,7 +4,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "import:reviews": "node importDishReviews.js"
+    "import:reviews": "node importDishReviews.js",
+    "line:richmenu": "node line/setupRichMenu.js",
+    "line:richmenu:image": "node line/generateRichMenuAsset.js"
   },
   "dependencies": {
     "@line/bot-sdk": "^9.5.0",

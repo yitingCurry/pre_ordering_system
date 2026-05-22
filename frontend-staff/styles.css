@@ -138,6 +138,23 @@ button{ -webkit-tap-highlight-color:transparent }
   .layout{grid-template-columns:1fr}
   .clearBtn{min-height:58px}
 }
+.feedbackSection{margin:0 24px 24px;padding:18px 20px;background:var(--surface-strong);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+.feedbackHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.feedbackCount{font-size:13px;color:var(--muted);font-weight:700}
+.feedbackEmpty{font-size:13px;color:var(--muted);padding:8px 0}
+.feedbackList{display:flex;flex-direction:column;gap:12px;max-height:320px;overflow-y:auto}
+.feedbackRow{padding:12px 14px;border-radius:10px;background:var(--brand-soft);border:1px solid rgba(180,83,9,.12)}
+.feedbackRowTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.feedbackNumber{font-weight:800;font-size:16px;color:var(--brand-dark)}
+.feedbackBadge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.06);color:var(--muted)}
+.feedbackBadge.done{background:rgba(21,128,61,.12);color:var(--success)}
+.feedbackRatings{display:flex;flex-wrap:wrap;gap:6px}
+.fbChip{font-size:12px;font-weight:700;padding:4px 8px;border-radius:8px;background:#fff;border:1px solid var(--line)}
+.fbChip.good{color:var(--success);border-color:rgba(21,128,61,.25);background:rgba(21,128,61,.08)}
+.fbChip.ok{color:#a16207;border-color:rgba(180,83,9,.2);background:rgba(255,241,220,.8)}
+.fbChip.bad{color:var(--danger);border-color:rgba(220,38,38,.2);background:rgba(254,226,226,.6)}
+.feedbackComment{margin-top:8px;font-size:13px;color:var(--ink);line-height:1.5}
+
 @media(max-width:600px){
   .container{padding-bottom:18px}
   .topbar{display:block;margin:0 12px 16px;padding:15px;border-radius:0 0 14px 14px}
@@ -155,4 +172,5 @@ button{ -webkit-tap-highlight-color:transparent }
   .queueRight{width:100%;justify-content:space-between}
   .queueSubtitle{max-width:220px}
   .modalActions{grid-template-columns:1fr}
+  .feedbackSection{margin:0 12px 16px;padding:14px}
 }

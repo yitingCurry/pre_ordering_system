@@ -1,16 +1,9 @@
 const notify = require('./notify');
+const { countWaitingAhead } = require('./queueHelpers');
 
 function envInt(name, fallback) {
   const n = Number(process.env[name]);
   return Number.isFinite(n) && n > 0 ? n : fallback;
-}
-
-async function countWaitingAhead(db, queueId) {
-  const row = await db.get(
-    "SELECT COUNT(*) AS c FROM queue WHERE status = 'waiting' AND id < ?",
-    [queueId]
-  );
-  return row?.c ?? 0;
 }
 
 async function runAlmostCalledJob(db) {

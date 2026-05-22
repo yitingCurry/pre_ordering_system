@@ -37,8 +37,15 @@ export default function Staff() {
   const [message, setMessage] = useState(API ? '' : '目前尚未設定後端 API 網址，請先設定 NEXT_PUBLIC_API_URL。');
   const [confirmClear, setConfirmClear] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [feedbackItems, setFeedbackItems] = useState([]);
 
   const isCallNextDisabled = actionLoadingId !== null;
+
+  function ratingClass(rating) {
+    if (rating === 'good') return 'good';
+    if (rating === 'bad') return 'bad';
+    return 'ok';
+  }
 
   async function loadQueue() {
     if (!API) return;
@@ -130,6 +137,18 @@ export default function Staff() {
     finally { setActionLoadingId(null); }
   }
 
+  async function loadFeedback() {
+    if (!API) return;
+    try {
+      const res = await fetch(`${API}/feedback/today`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setFeedbackItems(data.items || []);
+    } catch {
+      setFeedbackItems([]);
+    }
+  }
+
   async function loadOrder(queueId, queueNumber) {
     if (!API) return;
     setSelectedQueueId(queueId);
@@ -144,7 +163,11 @@ export default function Staff() {
   useEffect(() => {
     if (!API) return;
     loadQueue();
-    const timer = setInterval(loadQueue, 3000);
+    loadFeedback();
+    const timer = setInterval(() => {
+      loadQueue();
+      loadFeedback();
+    }, 5000);
     return () => clearInterval(timer);
   }, []);
 
@@ -327,6 +350,40 @@ export default function Staff() {
             </div>
           </div>
         </div>
+
+        {/* ── Today's feedback ── */}
+        <section className="feedbackSection">
+          <div className="feedbackHeader">
+            <div className="sectionTitle">今日回饋</div>
+            <span className="feedbackCount">{feedbackItems.length} 則</span>
+          </div>
+          {feedbackItems.length === 0 && (
+            <div className="feedbackEmpty">今日尚無客人回饋</div>
+          )}
+          {feedbackItems.length > 0 && (
+            <div className="feedbackList">
+              {feedbackItems.map((item) => (
+                <div className="feedbackRow" key={item.id}>
+                  <div className="feedbackRowTop">
+                    <span className="feedbackNumber">號碼 {item.queueNumber}</span>
+                    <span className={`feedbackBadge${item.complete ? ' done' : ''}`}>
+                      {item.complete ? (item.comment ? '已留言' : '已完成') : '填寫中'}
+                    </span>
+                  </div>
+                  <div className="feedbackRatings">
+                    <span className={`fbChip ${ratingClass(item.rating)}`}>整體 {item.ratingLabel || '—'}</span>
+                    <span className={`fbChip ${ratingClass(item.rating_wait)}`}>等候 {item.ratingWaitLabel || '—'}</span>
+                    <span className={`fbChip ${ratingClass(item.rating_food)}`}>餐點 {item.ratingFoodLabel || '—'}</span>
+                    <span className={`fbChip ${ratingClass(item.rating_service)}`}>服務 {item.ratingServiceLabel || '—'}</span>
+                  </div>
+                  {item.comment && (
+                    <div className="feedbackComment">「{item.comment.length > 120 ? `${item.comment.slice(0, 120)}…` : item.comment}」</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* ── Clear confirm modal ── */}
         {confirmClear && (
