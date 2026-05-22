@@ -130,6 +130,18 @@ const menu = [
 ];
 
 const pages = ['本店特別推薦', '炒粉/面/飯', '燴飯', '每日限量', '湯麵', '炒公仔麵', '本店特色', '冷熱飲品', '三文治', '多士', '甜品'];
+const confirmAddOnIds = ['071', '080', '090'];
+
+function buildSelectedItem(item, overrides = {}) {
+  return {
+    name: item.name,
+    price: item.price,
+    quantity: 1,
+    variant: item.variants[0] || '',
+    options: [],
+    ...overrides
+  };
+}
 
 function getDeviceToken() {
   if (typeof window === 'undefined') return '';
@@ -210,25 +222,26 @@ export default function Menu() {
     items: menu.filter((item) => item.page === page)
   })).filter((group) => group.items.length > 0), []);
 
-  const subtotal = useMemo(() => Object.entries(selected).reduce((sum, [id, value]) => {
-    const item = menu.find((m) => m.id === id);
-    return sum + ((item?.price || 0) * (value.quantity || 1));
+  const subtotal = useMemo(() => Object.entries(selected).reduce((sum, [, value]) => {
+    return sum + ((value.price || 0) * (value.quantity || 1));
   }, 0), [selected]);
 
   const itemCount = useMemo(() => Object.values(selected).reduce((sum, item) => sum + (item.quantity || 1), 0), [selected]);
 
-  const confirmItems = useMemo(() => Object.entries(selected).map(([id, value]) => {
-    const item = menu.find((m) => m.id === id);
-    return {
-      id,
-      name: value.name,
-      quantity: value.quantity || 1,
-      category: value.category || '',
-      variant: value.variant || '',
-      options: value.options || [],
-      price: (item?.price || 0) * (value.quantity || 1)
-    };
-  }), [selected]);
+  const confirmItems = useMemo(() => Object.entries(selected).map(([id, value]) => ({
+    id,
+    name: value.name,
+    quantity: value.quantity || 1,
+    category: value.category || '',
+    variant: value.variant || '',
+    options: value.options || [],
+    price: (value.price || 0) * (value.quantity || 1)
+  })), [selected]);
+
+  const confirmAddOnItems = useMemo(
+    () => confirmAddOnIds.map((id) => menu.find((m) => m.id === id)).filter(Boolean),
+    []
+  );
 
   const averageReviewRating = useMemo(() => {
     const ratings = reviewModal.reviews
@@ -246,8 +259,10 @@ export default function Menu() {
     }
     const next = {};
     order.items.forEach((item) => {
+      const menuItem = menu.find((m) => m.id === item.id);
       next[item.id] = {
         name: item.name,
+        price: item.price ?? menuItem?.price ?? 0,
         quantity: item.quantity || 1,
         variant: item.variant || '',
         category: item.category || '',
@@ -297,12 +312,7 @@ export default function Menu() {
         }
         delete next[item.id];
       } else {
-        next[item.id] = {
-          name: item.name,
-          quantity: 1,
-          variant: item.variants[0] || '',
-          options: []
-        };
+        next[item.id] = buildSelectedItem(item);
       }
       return next;
     });
@@ -329,12 +339,7 @@ export default function Menu() {
       return;
     }
     setSelected((prev) => {
-      const current = prev[item.id] || {
-        name: item.name,
-        quantity: 1,
-        variant: item.variants[0] || '',
-        options: []
-      };
+      const current = prev[item.id] || buildSelectedItem(item);
       return { ...prev, [item.id]: { ...current, [field]: value } };
     });
   }
@@ -345,12 +350,7 @@ export default function Menu() {
       return;
     }
     setSelected((prev) => {
-      const current = prev[item.id] || {
-        name: item.name,
-        quantity: 1,
-        variant: item.variants[0] || '',
-        options: []
-      };
+      const current = prev[item.id] || buildSelectedItem(item);
       const exists = current.options.includes(option);
       const options = exists ? current.options.filter((o) => o !== option) : [...current.options, option];
       return { ...prev, [item.id]: { ...current, options } };
@@ -361,6 +361,61 @@ export default function Menu() {
     if (!queue?.id) return setMessage('請先回首頁取號');
     if (!confirmItems.length) return setMessage('請至少選擇一項餐點');
     setShowConfirm(true);
+  }
+
+  function renderFoodCard(item) {
+    return (
+      <div key={item.id} className="foodCard">
+        <label className="foodTop">
+          <input type="checkbox" checked={!!selected[item.id]} onChange={() => toggleItem(item)} disabled={false} />
+          <div className="foodInfo">
+            <div className="foodName">{item.name}</div>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); openReviews(item); }}
+              style={{ marginTop: 7, border: 'none', background: '#f3f4f6', color: '#4b5563', borderRadius: 999, padding: '7px 10px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+            >
+              查看評論
+            </button>
+          </div>
+          <div className="foodPrice">${item.price}</div>
+        </label>
+
+        {!!selected[item.id] && (
+          <div className="configPanel">
+            <div className="controlRow">
+              <div className="controlLabel">數量</div>
+              <div className="qtyBox">
+                <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, -1)} disabled={submittedSnapshot[item.id] && (selected[item.id].quantity || 1) <= (submittedSnapshot[item.id].quantity || 1)}>-</button>
+                <div className="qtyValue">{selected[item.id].quantity || 1}</div>
+                <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, 1)}>+</button>
+              </div>
+            </div>
+
+            <div className="fieldBlock">
+              <div className="fieldLabel">規格</div>
+              <div className="selectorRow">
+                {item.variants.map((variant) => (
+                  <button key={variant} type="button" className={`selectChip ${selected[item.id].variant === variant ? 'active' : ''}`} onClick={() => updateField(item, 'variant', variant)} disabled={!!submittedSnapshot[item.id]}>{variant}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="fieldBlock">
+              <div className="fieldLabel">加料 / 偏好</div>
+              <div className="optionGrid clean">
+                {item.options.map((option) => (
+                  <label key={option} className="chip orange">
+                    <input type="checkbox" checked={selected[item.id]?.options.includes(option) || false} onChange={() => toggleOption(item, option)} disabled={!!submittedSnapshot[item.id]} />
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   async function openReviews(item) {
@@ -516,58 +571,7 @@ export default function Menu() {
             >
               <div className="menuPageTitle">{page}</div>
 
-              {items.map((item) => (
-                <div key={item.id} className="foodCard">
-                  <label className="foodTop">
-                    <input type="checkbox" checked={!!selected[item.id]} onChange={() => toggleItem(item)} disabled={false} />
-                    <div className="foodInfo">
-                      <div className="foodName">{item.name}</div>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); openReviews(item); }}
-                        style={{ marginTop: 7, border: 'none', background: '#f3f4f6', color: '#4b5563', borderRadius: 999, padding: '7px 10px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
-                      >
-                        查看評論
-                      </button>
-                    </div>
-                    <div className="foodPrice">${item.price}</div>
-                  </label>
-
-                  {!!selected[item.id] && (
-                    <div className="configPanel">
-                      <div className="controlRow">
-                        <div className="controlLabel">數量</div>
-                        <div className="qtyBox">
-                          <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, -1)} disabled={submittedSnapshot[item.id] && (selected[item.id].quantity || 1) <= (submittedSnapshot[item.id].quantity || 1)}>-</button>
-                          <div className="qtyValue">{selected[item.id].quantity || 1}</div>
-                          <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, 1)}>+</button>
-                        </div>
-                      </div>
-
-                      <div className="fieldBlock">
-                        <div className="fieldLabel">規格</div>
-                        <div className="selectorRow">
-                          {item.variants.map((variant) => (
-                            <button key={variant} type="button" className={`selectChip ${selected[item.id].variant === variant ? 'active' : ''}`} onClick={() => updateField(item, 'variant', variant)} disabled={!!submittedSnapshot[item.id]}>{variant}</button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="fieldBlock">
-                        <div className="fieldLabel">加料 / 偏好</div>
-                        <div className="optionGrid clean">
-                          {item.options.map((option) => (
-                            <label key={option} className="chip orange">
-                              <input type="checkbox" checked={selected[item.id]?.options.includes(option) || false} onChange={() => toggleOption(item, option)} disabled={!!submittedSnapshot[item.id]} />
-                              <span>{option}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+              {items.map((item) => renderFoodCard(item))}
             </section>
           ))}
         </div>
@@ -600,6 +604,12 @@ export default function Menu() {
               </div>
               <div className="confirmNote">備註：{note || '無'}</div>
               <div className="confirmNote" style={{ color: '#b45309', fontWeight: 600 }}>提醒：送出後仍可加點，但不能刪除原有品項，也不能減少原有數量。</div>
+              <section className="confirmAddOnSection">
+                <div className="confirmAddOnTitle">還要再加點什麼嗎</div>
+                <div className="confirmAddOnList">
+                  {confirmAddOnItems.map((item) => renderFoodCard(item))}
+                </div>
+              </section>
               <div className="confirmTotal">總計：${subtotal}</div>
               <div className="modalActions">
                 <button type="button" className="outlineBtn modalBtn" onClick={() => setShowConfirm(false)}>返回修改</button>
