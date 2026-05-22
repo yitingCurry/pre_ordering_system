@@ -36,16 +36,11 @@ export default function Staff() {
   const [order, setOrder] = useState(null);
   const [message, setMessage] = useState(API ? '' : '目前尚未設定後端 API 網址，請先設定 NEXT_PUBLIC_API_URL。');
   const [confirmClear, setConfirmClear] = useState(false);
+  const [todayTotal, setTodayTotal] = useState(null);
+  const [todayTotalLoading, setTodayTotalLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
-  const [feedbackItems, setFeedbackItems] = useState([]);
 
   const isCallNextDisabled = actionLoadingId !== null;
-
-  function ratingClass(rating) {
-    if (rating === 'good') return 'good';
-    if (rating === 'bad') return 'bad';
-    return 'ok';
-  }
 
   async function loadQueue() {
     if (!API) return;
@@ -137,15 +132,26 @@ export default function Staff() {
     finally { setActionLoadingId(null); }
   }
 
-  async function loadFeedback() {
-    if (!API) return;
+  async function toggleTodayOrderTotal() {
+    if (todayTotal) {
+      setTodayTotal(null);
+      return;
+    }
+    if (!API) {
+      setMessage('尚未設定後端 API 網址，暫時無法查詢。');
+      return;
+    }
+    setTodayTotalLoading(true);
     try {
-      const res = await fetch(`${API}/feedback/today`);
-      if (!res.ok) return;
+      const res = await fetch(`${API}/orders/today-total`);
       const data = await res.json();
-      setFeedbackItems(data.items || []);
-    } catch {
-      setFeedbackItems([]);
+      if (!res.ok) throw new Error(data.error || '查詢失敗');
+      setTodayTotal(data);
+    } catch (e) {
+      setTodayTotal(null);
+      setMessage(e.message || '無法取得今日訂單金額');
+    } finally {
+      setTodayTotalLoading(false);
     }
   }
 
@@ -163,11 +169,7 @@ export default function Staff() {
   useEffect(() => {
     if (!API) return;
     loadQueue();
-    loadFeedback();
-    const timer = setInterval(() => {
-      loadQueue();
-      loadFeedback();
-    }, 5000);
+    const timer = setInterval(loadQueue, 3000);
     return () => clearInterval(timer);
   }, []);
 
@@ -183,12 +185,6 @@ export default function Staff() {
   }));
 
   const seatedCount = queueData.queue.filter((i) => i.status === 'seated').length;
-  const orderSubtotal = order
-    ? order.items.reduce((sum, item) => {
-        const found = /* menu lookup removed for brevity — replace with your menu import */ null;
-        return sum + (found ? found.price * (item.quantity || 1) : 0);
-      }, 0)
-    : 0;
 
   return (
     <div className="page">
@@ -241,6 +237,29 @@ export default function Staff() {
           ))}
           <button className="clearBtn" onClick={() => setConfirmClear(true)}>清空今日列隊</button>
         </div>
+
+        <div className="staffSecondaryActions">
+          <button
+            type="button"
+            className={`summaryBtn${todayTotal ? ' active' : ''}`}
+            onClick={toggleTodayOrderTotal}
+            disabled={todayTotalLoading || isCallNextDisabled}
+          >
+            {todayTotalLoading ? '計算中…' : todayTotal ? '隱藏今日預點餐金額總計' : '今日預點餐金額總計'}
+          </button>
+        </div>
+
+        {todayTotal && (
+          <div className="todayTotalPanel">
+            <div className="todayTotalMain">
+              <span className="todayTotalLabel">今日預點餐金額總計</span>
+              <span className="todayTotalValue">${todayTotal.total.toLocaleString()}</span>
+            </div>
+            <div className="todayTotalMeta">
+              {todayTotal.date} · 共 {todayTotal.orderCount} 筆預點餐
+            </div>
+          </div>
+        )}
 
         {message && <div className="alertMsg">{message}</div>}
 
@@ -350,40 +369,6 @@ export default function Staff() {
             </div>
           </div>
         </div>
-
-        {/* ── Today's feedback ── */}
-        <section className="feedbackSection">
-          <div className="feedbackHeader">
-            <div className="sectionTitle">今日回饋</div>
-            <span className="feedbackCount">{feedbackItems.length} 則</span>
-          </div>
-          {feedbackItems.length === 0 && (
-            <div className="feedbackEmpty">今日尚無客人回饋</div>
-          )}
-          {feedbackItems.length > 0 && (
-            <div className="feedbackList">
-              {feedbackItems.map((item) => (
-                <div className="feedbackRow" key={item.id}>
-                  <div className="feedbackRowTop">
-                    <span className="feedbackNumber">號碼 {item.queueNumber}</span>
-                    <span className={`feedbackBadge${item.complete ? ' done' : ''}`}>
-                      {item.complete ? (item.comment ? '已留言' : '已完成') : '填寫中'}
-                    </span>
-                  </div>
-                  <div className="feedbackRatings">
-                    <span className={`fbChip ${ratingClass(item.rating)}`}>整體 {item.ratingLabel || '—'}</span>
-                    <span className={`fbChip ${ratingClass(item.rating_wait)}`}>等候 {item.ratingWaitLabel || '—'}</span>
-                    <span className={`fbChip ${ratingClass(item.rating_food)}`}>餐點 {item.ratingFoodLabel || '—'}</span>
-                    <span className={`fbChip ${ratingClass(item.rating_service)}`}>服務 {item.ratingServiceLabel || '—'}</span>
-                  </div>
-                  {item.comment && (
-                    <div className="feedbackComment">「{item.comment.length > 120 ? `${item.comment.slice(0, 120)}…` : item.comment}」</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
 
         {/* ── Clear confirm modal ── */}
         {confirmClear && (

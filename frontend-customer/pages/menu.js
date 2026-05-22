@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useLiff } from '../context/LiffContext';
 import { getStoredLineUserId } from '../lib/liff';
@@ -131,6 +131,63 @@ const menu = [
 
 const pages = ['本店特別推薦', '炒粉/面/飯', '燴飯', '每日限量', '湯麵', '炒公仔麵', '本店特色', '冷熱飲品', '三文治', '多士', '甜品'];
 
+const CONFIRM_UPSELL_IDS = ['071', '080', '090'];
+
+function FoodCard({ item, selected, submittedSnapshot, onToggleItem, onUpdateQuantity, onUpdateField, onToggleOption, onOpenReviews }) {
+  return (
+    <div className="foodCard">
+      <label className="foodTop">
+        <input type="checkbox" checked={!!selected[item.id]} onChange={() => onToggleItem(item)} />
+        <div className="foodInfo">
+          <div className="foodName">{item.name}</div>
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); onOpenReviews(item); }}
+            style={{ marginTop: 7, border: 'none', background: '#f3f4f6', color: '#4b5563', borderRadius: 999, padding: '7px 10px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+          >
+            查看評論
+          </button>
+        </div>
+        <div className="foodPrice">${item.price}</div>
+      </label>
+
+      {!!selected[item.id] && (
+        <div className="configPanel">
+          <div className="controlRow">
+            <div className="controlLabel">數量</div>
+            <div className="qtyBox">
+              <button type="button" className="qtyBtn" onClick={() => onUpdateQuantity(item.id, -1)} disabled={submittedSnapshot[item.id] && (selected[item.id].quantity || 1) <= (submittedSnapshot[item.id].quantity || 1)}>-</button>
+              <div className="qtyValue">{selected[item.id].quantity || 1}</div>
+              <button type="button" className="qtyBtn" onClick={() => onUpdateQuantity(item.id, 1)}>+</button>
+            </div>
+          </div>
+
+          <div className="fieldBlock">
+            <div className="fieldLabel">規格</div>
+            <div className="selectorRow">
+              {item.variants.map((variant) => (
+                <button key={variant} type="button" className={`selectChip ${selected[item.id].variant === variant ? 'active' : ''}`} onClick={() => onUpdateField(item, 'variant', variant)} disabled={!!submittedSnapshot[item.id]}>{variant}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="fieldBlock">
+            <div className="fieldLabel">加料 / 偏好</div>
+            <div className="optionGrid clean">
+              {item.options.map((option) => (
+                <label key={option} className="chip orange">
+                  <input type="checkbox" checked={selected[item.id]?.options.includes(option) || false} onChange={() => onToggleOption(item, option)} disabled={!!submittedSnapshot[item.id]} />
+                  <span>{option}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function getDeviceToken() {
   if (typeof window === 'undefined') return '';
   return localStorage.getItem('deviceToken') || '';
@@ -138,21 +195,18 @@ function getDeviceToken() {
 
 const REVIEW_TRUNCATE = 80;
 
-function parseRating(rating) {
-  const num = parseFloat(String(rating));
-  if (!Number.isFinite(num) || num <= 0) return null;
-  return Math.min(num, 5);
-}
-
 function StarRating({ rating }) {
   // rating 可能是數字或字串如 "5" 或 "4/5"，先嘗試解析
-  const num = parseRating(rating);
-  if (!num) return <span style={{ color: '#9a3412', fontSize: 13 }}>無星等</span>;
-  const percent = `${(num / 5) * 100}%`;
+  const num = parseFloat(String(rating));
+  if (!num || isNaN(num)) return <span style={{ color: '#9a3412', fontSize: 13 }}>無星等</span>;
+  const full = Math.floor(num);
+  const half = num - full >= 0.5;
+  const empty = 5 - full - (half ? 1 : 0);
   return (
-    <span style={{ position: 'relative', display: 'inline-block', fontSize: 14, letterSpacing: 1, lineHeight: 1, color: '#d1d5db' }} aria-label={`${num.toFixed(1)} 顆星`}>
-      <span>★★★★★</span>
-      <span style={{ position: 'absolute', inset: 0, width: percent, overflow: 'hidden', color: '#f59e0b', whiteSpace: 'nowrap' }}>★★★★★</span>
+    <span style={{ fontSize: 14, letterSpacing: 1 }}>
+      {'★'.repeat(full)}
+      {half ? '½' : ''}
+      {'☆'.repeat(empty)}
     </span>
   );
 }
@@ -195,20 +249,14 @@ export default function Menu() {
   const [message, setMessage] = useState(API ? '' : '目前尚未設定後端 API 網址，請先設定 NEXT_PUBLIC_API_URL。');
   const [saveState, setSaveState] = useState('idle');
   const [savedSummary, setSavedSummary] = useState('');
-  const [activePage, setActivePage] = useState(pages[0]);
+  const [activePage, setActivePage] = useState('飲品');
   const [showConfirm, setShowConfirm] = useState(false);
   const [reviewModal, setReviewModal] = useState({ open: false, item: null, loading: false, reviews: [], error: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedSnapshot, setSubmittedSnapshot] = useState({});
-  const pageSectionRefs = useRef({});
-  const pageTabsRef = useRef(null);
-  const pageTabRefs = useRef({});
   const router = useRouter();
 
-  const menuByPage = useMemo(() => pages.map((page) => ({
-    page,
-    items: menu.filter((item) => item.page === page)
-  })).filter((group) => group.items.length > 0), []);
+  const currentMenu = useMemo(() => menu.filter((item) => item.page === activePage), [activePage]);
 
   const subtotal = useMemo(() => Object.entries(selected).reduce((sum, [id, value]) => {
     const item = menu.find((m) => m.id === id);
@@ -216,6 +264,11 @@ export default function Menu() {
   }, 0), [selected]);
 
   const itemCount = useMemo(() => Object.values(selected).reduce((sum, item) => sum + (item.quantity || 1), 0), [selected]);
+
+  const confirmUpsellItems = useMemo(
+    () => CONFIRM_UPSELL_IDS.map((id) => menu.find((m) => m.id === id)).filter(Boolean),
+    []
+  );
 
   const confirmItems = useMemo(() => Object.entries(selected).map(([id, value]) => {
     const item = menu.find((m) => m.id === id);
@@ -229,14 +282,6 @@ export default function Menu() {
       price: (item?.price || 0) * (value.quantity || 1)
     };
   }), [selected]);
-
-  const averageReviewRating = useMemo(() => {
-    const ratings = reviewModal.reviews
-      .map((review) => parseRating(review.rating))
-      .filter((rating) => rating !== null);
-    if (!ratings.length) return null;
-    return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
-  }, [reviewModal.reviews]);
 
   function applyExistingOrder(order, submitted = false) {
     if (!order) {
@@ -410,65 +455,10 @@ export default function Menu() {
     }
   }
 
-  function scrollActiveTabIntoView(page, behavior = 'smooth') {
-    const container = pageTabsRef.current;
-    const tab = pageTabRefs.current[page];
-    if (!container || !tab) return;
-
-    const nextLeft = tab.offsetLeft - (container.clientWidth - tab.clientWidth) / 2;
-    container.scrollTo({ left: Math.max(0, nextLeft), behavior });
-  }
-
-  function handlePageClick(page) {
-    setActivePage(page);
-    scrollActiveTabIntoView(page);
-    pageSectionRefs.current[page]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
   useEffect(() => {
     if (!API || !liffReady) return;
     loadMyState();
   }, [liffReady, lineUserId]);
-
-  useEffect(() => {
-    scrollActiveTabIntoView(activePage);
-  }, [activePage]);
-
-  useEffect(() => {
-    let ticking = false;
-
-    function syncActivePage() {
-      ticking = false;
-      const markerY = 150;
-      let nextPage = activePage;
-
-      for (const page of pages) {
-        const section = pageSectionRefs.current[page];
-        if (!section) continue;
-        const rect = section.getBoundingClientRect();
-        if (rect.top <= markerY && rect.bottom > markerY) {
-          nextPage = page;
-          break;
-        }
-      }
-
-      if (nextPage !== activePage) setActivePage(nextPage);
-    }
-
-    function onScroll() {
-      if (ticking) return;
-      ticking = true;
-      window.requestAnimationFrame(syncActivePage);
-    }
-
-    syncActivePage();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-    };
-  }, [activePage]);
 
   return (
     <div className="customerPage">
@@ -493,84 +483,25 @@ export default function Menu() {
           </div>
         </div>
 
-        <div className="categoryTabs pageTabs" ref={pageTabsRef}>
+        <div className="categoryTabs pageTabs">
           {pages.map((page) => (
-            <button
-              key={page}
-              type="button"
-              ref={(node) => { pageTabRefs.current[page] = node; }}
-              className={`catTab ${activePage === page ? 'active' : ''}`}
-              onClick={() => handlePageClick(page)}
-            >
-              {page}
-            </button>
+            <button key={page} type="button" className={`catTab ${activePage === page ? 'active' : ''}`} onClick={() => setActivePage(page)}>{page}</button>
           ))}
         </div>
 
-        <div className="menuSections">
-          {menuByPage.map(({ page, items }) => (
-            <section
-              key={page}
-              ref={(node) => { pageSectionRefs.current[page] = node; }}
-              className="menuSection"
-            >
-              <div className="menuPageTitle">{page}</div>
-
-              {items.map((item) => (
-                <div key={item.id} className="foodCard">
-                  <label className="foodTop">
-                    <input type="checkbox" checked={!!selected[item.id]} onChange={() => toggleItem(item)} disabled={false} />
-                    <div className="foodInfo">
-                      <div className="foodName">{item.name}</div>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); openReviews(item); }}
-                        style={{ marginTop: 7, border: 'none', background: '#f3f4f6', color: '#4b5563', borderRadius: 999, padding: '7px 10px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
-                      >
-                        查看評論
-                      </button>
-                    </div>
-                    <div className="foodPrice">${item.price}</div>
-                  </label>
-
-                  {!!selected[item.id] && (
-                    <div className="configPanel">
-                      <div className="controlRow">
-                        <div className="controlLabel">數量</div>
-                        <div className="qtyBox">
-                          <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, -1)} disabled={submittedSnapshot[item.id] && (selected[item.id].quantity || 1) <= (submittedSnapshot[item.id].quantity || 1)}>-</button>
-                          <div className="qtyValue">{selected[item.id].quantity || 1}</div>
-                          <button type="button" className="qtyBtn" onClick={() => updateQuantity(item.id, 1)}>+</button>
-                        </div>
-                      </div>
-
-                      <div className="fieldBlock">
-                        <div className="fieldLabel">規格</div>
-                        <div className="selectorRow">
-                          {item.variants.map((variant) => (
-                            <button key={variant} type="button" className={`selectChip ${selected[item.id].variant === variant ? 'active' : ''}`} onClick={() => updateField(item, 'variant', variant)} disabled={!!submittedSnapshot[item.id]}>{variant}</button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="fieldBlock">
-                        <div className="fieldLabel">加料 / 偏好</div>
-                        <div className="optionGrid clean">
-                          {item.options.map((option) => (
-                            <label key={option} className="chip orange">
-                              <input type="checkbox" checked={selected[item.id]?.options.includes(option) || false} onChange={() => toggleOption(item, option)} disabled={!!submittedSnapshot[item.id]} />
-                              <span>{option}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </section>
-          ))}
-        </div>
+        {currentMenu.map((item) => (
+          <FoodCard
+            key={item.id}
+            item={item}
+            selected={selected}
+            submittedSnapshot={submittedSnapshot}
+            onToggleItem={toggleItem}
+            onUpdateQuantity={updateQuantity}
+            onUpdateField={updateField}
+            onToggleOption={toggleOption}
+            onOpenReviews={openReviews}
+          />
+        ))}
 
         <textarea className="textarea modern" placeholder="備註（例如：少冰、先做飲品）" value={note} onChange={(e) => setNote(e.target.value)} />
         {(message || savedSummary) && <div className={message.includes('失敗') || message.includes('請') || message.includes('無法') || message.includes('尚未設定') ? 'alertError' : 'alertOk'}>{message || savedSummary}</div>}
@@ -598,6 +529,22 @@ export default function Menu() {
                   </div>
                 ))}
               </div>
+              <div className="confirmUpsellSection">
+                <div className="confirmUpsellTitle">還要加點什麼嗎?</div>
+                {confirmUpsellItems.map((item) => (
+                  <FoodCard
+                    key={item.id}
+                    item={item}
+                    selected={selected}
+                    submittedSnapshot={submittedSnapshot}
+                    onToggleItem={toggleItem}
+                    onUpdateQuantity={updateQuantity}
+                    onUpdateField={updateField}
+                    onToggleOption={toggleOption}
+                    onOpenReviews={openReviews}
+                  />
+                ))}
+              </div>
               <div className="confirmNote">備註：{note || '無'}</div>
               <div className="confirmNote" style={{ color: '#b45309', fontWeight: 600 }}>提醒：送出後仍可加點，但不能刪除原有品項，也不能減少原有數量。</div>
               <div className="confirmTotal">總計：${subtotal}</div>
@@ -613,12 +560,6 @@ export default function Menu() {
           <div className="modalOverlay">
             <div className="confirmModal">
               <div className="modalTitle">{reviewModal.item?.name} 的相關評論</div>
-              {!reviewModal.loading && !reviewModal.error && reviewModal.reviews.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '-4px 0 12px', color: '#9a3412', fontSize: 14, fontWeight: 800 }}>
-                  <span>平均星等：{averageReviewRating ? averageReviewRating.toFixed(1) : '無星等'}</span>
-                  {averageReviewRating && <StarRating rating={averageReviewRating} />}
-                </div>
-              )}
               {reviewModal.loading && <div className="sectionText">載入中...</div>}
               {reviewModal.error && <div className="alertError">{reviewModal.error}</div>}
               {!reviewModal.loading && !reviewModal.error && reviewModal.reviews.length === 0 && (
