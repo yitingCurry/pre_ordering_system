@@ -53,7 +53,7 @@ A working MVP for a traditional Hong Kong restaurant queue and pre-order system,
 - 觸發：店員按「客人已離開」或用餐 60 分鐘到點
 - 客人依序點選：整體、等候、餐點、服務（各：滿意／普通／不滿意）
 - 四項完成後可輸入文字意見，或回覆「略過」
-- 店員端：頁面下方「今日回饋」；API：`GET /feedback/today`
+- 店員端：頁面下方「今日回饋」（四維度滿意／普通／不滿意票數總覽 + 逐筆明細與留言）；API：`GET /feedback/today`（含 `summary`）
 
 ## 部署架構
 
