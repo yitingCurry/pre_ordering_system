@@ -6,7 +6,10 @@
     "start": "node server.js",
     "import:reviews": "node importDishReviews.js",
     "line:richmenu": "node line/setupRichMenu.js",
-    "line:richmenu:image": "node line/generateRichMenuAsset.js"
+    "line:richmenu:image": "node line/generateRichMenuAsset.js",
+    "test": "jest",
+    "test:unit": "jest __tests__/unit",
+    "test:integration": "jest __tests__/integration"
   },
   "dependencies": {
     "@line/bot-sdk": "^9.5.0",
@@ -14,5 +17,9 @@
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2"
   }
 }

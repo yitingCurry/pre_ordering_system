@@ -1,0 +1,104 @@
+name: CI Tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  # ── Job 1: Backend unit + integration tests ───────────────────────────────
+  backend-tests:
+    name: Backend (unit + integration)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Run unit tests
+        run: npm run test:unit -- --no-coverage
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          ALLOW_BROWSER_QUEUE: "1"
+
+      - name: Run integration tests
+        run: npm run test:integration -- --no-coverage
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          ALLOW_BROWSER_QUEUE: "1"
+
+  # ── Job 2: E2E tests ──────────────────────────────────────────────────────
+  e2e-tests:
+    name: E2E (customer + staff)
+    runs-on: ubuntu-latest
+    needs: backend-tests
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cache backend npm
+        uses: actions/cache@v4
+        with:
+          path: backend/node_modules
+          key: backend-${{ hashFiles('backend/package-lock.json') }}
+
+      - name: Cache customer npm
+        uses: actions/cache@v4
+        with:
+          path: frontend-customer/node_modules
+          key: customer-${{ hashFiles('frontend-customer/package-lock.json') }}
+
+      - name: Cache staff npm
+        uses: actions/cache@v4
+        with:
+          path: frontend-staff/node_modules
+          key: staff-${{ hashFiles('frontend-staff/package-lock.json') }}
+
+      - name: Cache root npm (Playwright)
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: root-${{ hashFiles('package-lock.json') }}
+
+      - name: Install all dependencies
+        run: |
+          npm ci --prefix backend
+          npm ci --prefix frontend-customer
+          npm ci --prefix frontend-staff
+          npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          ALLOW_BROWSER_QUEUE: "1"
+          NEXT_PUBLIC_ALLOW_BROWSER_QUEUE: "1"
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
