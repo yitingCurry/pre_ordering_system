@@ -1,4 +1,5 @@
 const { countWaitingAhead } = require('./queueHelpers');
+const { SKIP_RULE_SHORT, SKIP_RULE_CALLED } = require('./queueCopy');
 
 const STATUS_LABELS = {
   waiting: '等待叫號中',
@@ -34,7 +35,11 @@ async function getMyStatusReply(db, lineUserId) {
 
   if (queue.status === 'waiting') {
     const ahead = await countWaitingAhead(db, queue.id);
-    text += `\n前方約 ${ahead} 組`;
+    text += `\n前方約 ${ahead} 組\n\n${SKIP_RULE_SHORT}`;
+  }
+
+  if (queue.status === 'called') {
+    text += `\n\n${SKIP_RULE_CALLED}`;
   }
 
   if (queue.status === 'skipped') {

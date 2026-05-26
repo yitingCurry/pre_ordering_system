@@ -15,6 +15,13 @@ A working MVP for a traditional Hong Kong restaurant queue and pre-order system,
 - **用餐回饋**：整體／等候／餐點／服務四項評分 + 可選文字留言（LINE）；店員端「今日回饋」列表
 - 店員端查看隊列與草稿，維持手寫點單流程
 
+## 候位規則
+
+- 叫號後請盡快到櫃台報到
+- 若叫號時未在現場，店員會將號碼標記為**過號**
+- 過號後請重新取號或洽櫃台
+- 規則文案會出現在：取號／快到號／叫號 LINE Push、顧客 LIFF 取號頁、聊天「我的號碼」
+
 ## LINE 設定（實作前請完成）
 
 1. [LINE Developers Console](https://developers.line.biz/console/) 建立 **Messaging API** Channel
@@ -23,17 +30,17 @@ A working MVP for a traditional Hong Kong restaurant queue and pre-order system,
    - Endpoint URL = 顧客 Vercel 網址（例如 `https://xxx.vercel.app/`）
    - Size: Full，Scope: `profile`
    - 門口 QR：`https://liff.line.me/{LIFF_ID}`
-4. **Rich Menu**（五格，可用腳本自動建立）：
-   - 線上取號 → LIFF 首頁
-   - 預點餐 → `{CUSTOMER_URL}/menu`
-   - 現場等候 → Postback `action=waiting_count`
-   - 我的號碼 → Postback `action=my_status`
-   - 菜色評論 → Postback `action=dish_review_help`
+4. **Rich Menu**（2×2 四格，深灰底 + 彩色圓形圖示，可用腳本自動建立）：
+   - 左上：線上取號 → LIFF 首頁
+   - 右上：預點餐 → `{CUSTOMER_URL}/menu`
+   - 左下：現場等候 → Postback `action=waiting_count`
+   - 右下：我的號碼 → Postback `action=my_status`
+   - 菜色評論不在選單內，請在聊天輸入 `評論 菜名` 查詢
    ```bash
    cd backend && npm install
    # .env 需有 LINE token、LIFF_ID、CUSTOMER_URL
-   npm run line:richmenu:image   # 可選，產生 2500×1686 圖
-   npm run line:richmenu         # 上傳並設為預設 Rich Menu（會覆蓋 Console 既有預設）
+   npm run line:richmenu:image   # 產生 2500×1686 圖（與點擊區同源 richMenuSpecs）
+   npm run line:richmenu         # 上傳並設為預設 Rich Menu（會覆蓋 LINE 上既有預設）
    ```
 5. Webhook URL（後端部署後）：`https://<render-host>/line/webhook`，開啟 Use webhook
 
