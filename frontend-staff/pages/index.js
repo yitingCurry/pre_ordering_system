@@ -38,6 +38,9 @@ export default function Staff() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [feedbackItems, setFeedbackItems] = useState([]);
+  const [showTodayRevenue, setShowTodayRevenue] = useState(false);
+  const [todayRevenue, setTodayRevenue] = useState(null);
+  const [todayRevenueLoading, setTodayRevenueLoading] = useState(false);
 
   const isCallNextDisabled = actionLoadingId !== null;
 
@@ -135,6 +138,30 @@ export default function Staff() {
       else if (selectedQueueId === queueId) setSelectedQueueNumber(data.number);
     } catch (e) { setMessage(e.message || '狀態更新失敗'); }
     finally { setActionLoadingId(null); }
+  }
+
+  async function loadTodayRevenue() {
+    if (!API) return;
+    setTodayRevenueLoading(true);
+    try {
+      const res = await fetch(`${API}/orders/today-total`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '取得金額失敗');
+      setTodayRevenue(data);
+    } catch {
+      setTodayRevenue({ error: true });
+    } finally {
+      setTodayRevenueLoading(false);
+    }
+  }
+
+  async function toggleTodayRevenue() {
+    if (showTodayRevenue) {
+      setShowTodayRevenue(false);
+      return;
+    }
+    setShowTodayRevenue(true);
+    await loadTodayRevenue();
   }
 
   async function loadFeedback() {
@@ -337,6 +364,9 @@ export default function Staff() {
                             規格：{item.variant || '未填'}
                             {item.options?.length ? `｜${item.options.join('、')}` : ''}
                           </div>
+                          {item.note && (
+                            <div className="orderOptions">餐點備註：{item.note}</div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -381,6 +411,31 @@ export default function Staff() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+        </section>
+
+        <section className="revenueSection">
+          <button
+            type="button"
+            className={`revenueToggleBtn${showTodayRevenue ? ' active' : ''}`}
+            onClick={toggleTodayRevenue}
+            disabled={!API || todayRevenueLoading}
+          >
+            {showTodayRevenue ? '收起今日餐點金額' : '查看今日餐點金額總和'}
+          </button>
+          {showTodayRevenue && (
+            <div className="revenuePanel">
+              {todayRevenueLoading && <div className="revenueHint">載入中…</div>}
+              {!todayRevenueLoading && todayRevenue?.error && (
+                <div className="revenueHint">無法取得今日金額，請稍後再試。</div>
+              )}
+              {!todayRevenueLoading && todayRevenue && !todayRevenue.error && (
+                <>
+                  <div className="revenueAmount">NT$ {todayRevenue.total.toLocaleString()}</div>
+                  <div className="revenueMeta">依資料庫今日 {todayRevenue.orderCount} 筆預點餐計算</div>
+                </>
+              )}
             </div>
           )}
         </section>

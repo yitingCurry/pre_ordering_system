@@ -431,17 +431,31 @@ app.post('/queue/clear', async (req, res) => {
   }
 });
 
+function normalizeOrderItems(items) {
+  return items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    price: Math.max(0, Number(item.price) || 0),
+    quantity: Math.max(1, Number(item.quantity) || 1),
+    variant: item.variant || '',
+    category: item.category || '',
+    note: item.note || '',
+    options: Array.isArray(item.options) ? item.options : []
+  }));
+}
+
 app.post('/order', async (req, res) => {
   try {
     const { queueId, items, note = '' } = req.body;
     if (!queueId || !Array.isArray(items)) return res.status(400).json({ error: '資料格式錯誤' });
+    const normalizedItems = normalizeOrderItems(items);
     const exists = await getSql('SELECT id FROM queue WHERE id=?', [queueId]);
     if (!exists) return res.status(404).json({ error: '找不到對應號碼' });
     const active = await getSql('SELECT id FROM orders WHERE queueId=?', [queueId]);
     if (active) {
-      await runSql('UPDATE orders SET items=?, note=? WHERE queueId=?', [JSON.stringify(items), note, queueId]);
+      await runSql('UPDATE orders SET items=?, note=? WHERE queueId=?', [JSON.stringify(normalizedItems), note, queueId]);
     } else {
-      await runSql('INSERT INTO orders (queueId, items, note) VALUES (?, ?, ?)', [queueId, JSON.stringify(items), note]);
+      await runSql('INSERT INTO orders (queueId, items, note) VALUES (?, ?, ?)', [queueId, JSON.stringify(normalizedItems), note]);
     }
     const order = await getSql('SELECT * FROM orders WHERE queueId=?', [queueId]);
     res.status(201).json(parseOrder(order));
@@ -457,6 +471,30 @@ app.get('/order/:queueId', async (req, res) => {
     res.json(parseOrder(order));
   } catch {
     res.status(500).json({ error: '取得預點餐失敗' });
+  }
+});
+
+function sumOrderItemsTotal(items) {
+  if (!Array.isArray(items)) return 0;
+  return items.reduce((sum, item) => {
+    const unit = Number(item.price) || 0;
+    return sum + unit * (item.quantity || 1);
+  }, 0);
+}
+
+app.get('/orders/today-total', async (req, res) => {
+  try {
+    const rows = await allSql(
+      `SELECT items FROM orders WHERE date(created_at) = date('now', 'localtime')`
+    );
+    let total = 0;
+    for (const row of rows) {
+      total += sumOrderItemsTotal(JSON.parse(row.items));
+    }
+    res.json({ total, orderCount: rows.length });
+  } catch (e) {
+    console.error('orders/today-total', e);
+    res.status(500).json({ error: '取得今日餐點金額總和失敗' });
   }
 });
 

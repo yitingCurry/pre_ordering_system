@@ -7,3 +7,7 @@
 .menuSections{display:grid;gap:4px}
 .menuSection{padding-top:8px}
 .menuPageTitle{margin:0 -2px 12px;padding:11px 12px;border-radius:16px;background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1px solid #fed7aa;color:#9a3412;font-size:18px;font-weight:950;box-shadow:0 8px 18px rgba(249,115,22,.08)}
+.confirmAddOnSection{margin:16px 0 4px;padding-top:14px;border-top:1px dashed #e5e7eb}
+.textarea.itemNote{min-height:72px;margin-top:8px;background:#fffdf8}
+.confirmAddOnTitle{margin-bottom:12px;font-size:17px;font-weight:900;color:#9a3412}
+.confirmAddOnList{display:grid;gap:10px;max-height:280px;overflow-y:auto;padding-right:2px}
