@@ -38,6 +38,9 @@ export default function Staff() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [feedbackItems, setFeedbackItems] = useState([]);
+  const [feedbackSummary, setFeedbackSummary] = useState(null);
+
+  const FEEDBACK_DIM_KEYS = ['overall', 'wait', 'food', 'service'];
   const [showTodayRevenue, setShowTodayRevenue] = useState(false);
   const [todayRevenue, setTodayRevenue] = useState(null);
   const [todayRevenueLoading, setTodayRevenueLoading] = useState(false);
@@ -171,8 +174,10 @@ export default function Staff() {
       if (!res.ok) return;
       const data = await res.json();
       setFeedbackItems(data.items || []);
+      setFeedbackSummary(data.summary || null);
     } catch {
       setFeedbackItems([]);
+      setFeedbackSummary(null);
     }
   }
 
@@ -385,10 +390,47 @@ export default function Staff() {
         <section className="feedbackSection">
           <div className="feedbackHeader">
             <div className="sectionTitle">今日回饋</div>
-            <span className="feedbackCount">{feedbackItems.length} 則</span>
+            <span className="feedbackCount">
+              {feedbackSummary
+                ? `今日 ${feedbackSummary.responseCount} 則 · 完整 ${feedbackSummary.completeCount} 則 · 共 ${feedbackSummary.totalVotes} 票`
+                : `${feedbackItems.length} 則`}
+            </span>
           </div>
           {feedbackItems.length === 0 && (
             <div className="feedbackEmpty">今日尚無客人回饋</div>
+          )}
+          {feedbackItems.length > 0 && feedbackSummary && (
+            <div className="feedbackSummary">
+              <div className="feedbackSummaryTitle">票數總覽</div>
+              <div className="feedbackSummaryTableWrap">
+                <table className="feedbackSummaryTable">
+                  <thead>
+                    <tr>
+                      <th>維度</th>
+                      <th>滿意</th>
+                      <th>普通</th>
+                      <th>不滿意</th>
+                      <th>小計</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {FEEDBACK_DIM_KEYS.map((key) => {
+                      const dim = feedbackSummary.dimensions[key];
+                      if (!dim) return null;
+                      return (
+                        <tr key={key}>
+                          <th scope="row">{dim.label}</th>
+                          <td><span className="fbVote good">{dim.good}</span></td>
+                          <td><span className="fbVote ok">{dim.ok}</span></td>
+                          <td><span className="fbVote bad">{dim.bad}</span></td>
+                          <td><span className="fbVote total">{dim.total}</span></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
           {feedbackItems.length > 0 && (
             <div className="feedbackList">

@@ -60,7 +60,7 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
   const { createLineWebhookHandler } = require('./line/webhook');
   const { startSeatTimerJob } = require('./line/seatedTimer');
   const { isLineConfigured } = require('./line/client');
-  const { formatFeedbackItem } = require('./line/feedback');
+  const { formatFeedbackItem, buildFeedbackSummary } = require('./line/feedback');
   const { labelRating } = require('./line/feedbackLabels');
   const { countWaitingAhead } = require('./line/queueHelpers');
 
@@ -513,7 +513,11 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
         ratingFoodLabel: labelRating(row.rating_food),
         ratingServiceLabel: labelRating(row.rating_service)
       }));
-      res.json({ items, count: items.length });
+      res.json({
+        items,
+        count: items.length,
+        summary: buildFeedbackSummary(rows)
+      });
     } catch (e) {
       console.error('feedback/today', e);
       res.status(500).json({ error: '取得今日回饋失敗' });
