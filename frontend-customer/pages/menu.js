@@ -138,6 +138,7 @@ function buildSelectedItem(item, overrides = {}) {
     price: item.price,
     quantity: 1,
     variant: item.variants[0] || '',
+    note: '',
     options: [],
     ...overrides
   };
@@ -235,6 +236,7 @@ export default function Menu() {
     category: value.category || '',
     variant: value.variant || '',
     options: value.options || [],
+    note: value.note || '',
     price: (value.price || 0) * (value.quantity || 1)
   })), [selected]);
 
@@ -266,6 +268,7 @@ export default function Menu() {
         quantity: item.quantity || 1,
         variant: item.variant || '',
         category: item.category || '',
+        note: item.note || '',
         options: item.options || []
       };
     });
@@ -411,6 +414,17 @@ export default function Menu() {
                   </label>
                 ))}
               </div>
+            </div>
+
+            <div className="fieldBlock">
+              <div className="fieldLabel">餐點備註</div>
+              <textarea
+                className="textarea itemNote"
+                placeholder="例如：不要蔥、醬另外放、少辣"
+                value={selected[item.id]?.note || ''}
+                onChange={(e) => updateField(item, 'note', e.target.value)}
+                disabled={!!submittedSnapshot[item.id]}
+              />
             </div>
           </div>
         )}
@@ -599,6 +613,7 @@ export default function Menu() {
                     <div className="confirmName">{item.name} × {item.quantity}</div>
                     <div className="confirmMeta">種類：{item.category || '未填'}｜規格：{item.variant || '未填'}</div>
                     <div className="confirmMeta">{item.options.length ? item.options.join('、') : '無其他偏好'}</div>
+                    {item.note && <div className="confirmMeta">餐點備註：{item.note}</div>}
                   </div>
                 ))}
               </div>

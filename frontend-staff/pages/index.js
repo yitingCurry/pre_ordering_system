@@ -364,6 +364,9 @@ export default function Staff() {
                             規格：{item.variant || '未填'}
                             {item.options?.length ? `｜${item.options.join('、')}` : ''}
                           </div>
+                          {item.note && (
+                            <div className="orderOptions">餐點備註：{item.note}</div>
+                          )}
                         </div>
                       </div>
                     ))}

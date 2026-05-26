@@ -439,6 +439,7 @@ function normalizeOrderItems(items) {
     quantity: Math.max(1, Number(item.quantity) || 1),
     variant: item.variant || '',
     category: item.category || '',
+    note: item.note || '',
     options: Array.isArray(item.options) ? item.options : []
   }));
 }
