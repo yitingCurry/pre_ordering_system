@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useLiff } from '../context/LiffContext';
 import { getStoredLineUserId, openAddFriendUrl, isDevBrowserAllowed } from '../lib/liff';
+import {
+  SKIP_RULE_SHORT,
+  SKIP_RULE_CALLED_PRIMARY,
+  SKIP_RULE_CALLED_SECONDARY,
+  WAITING_STAY_HINT
+} from '../lib/queueRules';
 
 function getApiBase() {
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -281,6 +287,7 @@ export default function Home() {
             <div className="listCard">
               <div className="sectionTitle">取號說明</div>
               <div className="sectionText">請使用 LINE 掃碼取號以啟用通知。輪到時會透過 LINE 推播，此頁亦會同步更新。</div>
+              <div className="sectionText" style={{ marginTop: 8 }}>{SKIP_RULE_SHORT}</div>
             </div>
           </section>
         )}
@@ -292,7 +299,15 @@ export default function Home() {
               <div className="bigNumber">{myQueue.number}</div>
               <div className="statusText">{statusText}</div>
               <div className="partyMeta">用餐人數：{Number(myQueue.partySize) || 1}</div>
-              {myQueue.status === 'called' && <div className="callBanner">請先向店員出示取號資訊</div>}
+              {myQueue.status === 'called' && (
+                <div className="callBanner">
+                  <div>{SKIP_RULE_CALLED_PRIMARY}</div>
+                  <div style={{ marginTop: 6, fontSize: '0.92em', opacity: 0.95 }}>{SKIP_RULE_CALLED_SECONDARY}</div>
+                </div>
+              )}
+              {myQueue.status === 'waiting' && (
+                <div className="waitingHint">{WAITING_STAY_HINT}</div>
+              )}
               {myQueue.status === 'skipped' && (
                 <div className="skipHint">此號已過號。若要繼續候位請重新取號，或向櫃台詢問。</div>
               )}

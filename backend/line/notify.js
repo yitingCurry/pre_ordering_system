@@ -1,4 +1,10 @@
 const { getClient, isLineConfigured } = require('./client');
+const {
+  SKIP_RULE_SHORT,
+  SKIP_RULE_CALLED,
+  WAITING_STAY_HINT,
+  SKIP_REASON_NOTE
+} = require('./queueCopy');
 
 const SEATED_DURATION = () => Number(process.env.SEATED_DURATION_MINUTES) || 60;
 
@@ -33,7 +39,7 @@ async function pushQueueTaken(queue, aheadCount) {
   const party = queue.partySize > 0 ? queue.partySize : 1;
   return pushToUser(queue.lineUserId, [{
     type: 'text',
-    text: `取號成功！\n你的號碼是 ${queue.number}（${party} 位）\n前方約 ${aheadCount} 組等候。\n\n輪到時會 LINE 通知。可輸入「我的號碼」或點選選單查詢狀態。`
+    text: `取號成功！\n你的號碼是 ${queue.number}（${party} 位）\n前方約 ${aheadCount} 組等候。\n\n輪到時會 LINE 通知。可輸入「我的號碼」或點選選單查詢狀態。\n\n${SKIP_RULE_SHORT}`
   }]);
 }
 
@@ -43,7 +49,7 @@ async function pushCalled(queue, order = null) {
   const summary = formatOrderSummary(order);
   await pushToUser(queue.lineUserId, [{
     type: 'text',
-    text: `輪到你了！請前往櫃台。\n你的號碼是 ${queue.number}（${party} 位）。\n\n${summary}`
+    text: `輪到你了！請前往櫃台。\n你的號碼是 ${queue.number}（${party} 位）。\n\n${SKIP_RULE_CALLED}\n\n${summary}`
   }]);
 }
 
@@ -51,7 +57,7 @@ async function pushSkipped(queue) {
   if (!queue?.lineUserId) return;
   await pushToUser(queue.lineUserId, [{
     type: 'text',
-    text: `你的號碼 ${queue.number} 已過號。\n若要繼續候位請重新取號，或向櫃台詢問。`
+    text: `你的號碼 ${queue.number} 已過號（${SKIP_REASON_NOTE}）。\n若要繼續候位請重新取號，或向櫃台詢問。`
   }]);
 }
 
@@ -68,7 +74,7 @@ async function pushAlmostCalled(queue, aheadCount) {
   if (!queue?.lineUserId) return false;
   return pushToUser(queue.lineUserId, [{
     type: 'text',
-    text: `就快到了！你的號碼 ${queue.number} 前方約 ${aheadCount} 組，請留意叫號。`
+    text: `就快到了！你的號碼 ${queue.number} 前方約 ${aheadCount} 組，請留意叫號。\n${WAITING_STAY_HINT}\n${SKIP_RULE_SHORT}`
   }]);
 }
 

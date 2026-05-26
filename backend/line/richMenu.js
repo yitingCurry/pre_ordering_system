@@ -1,27 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getClient, getBlobClient, isLineConfigured } = require('./client');
-
-const MENU_WIDTH = 2500;
-const MENU_HEIGHT = 1686;
-const COLS = 5;
-const COL_W = MENU_WIDTH / COLS;
-
-function buildAreas(urls) {
-  const { liffUrl, menuUrl } = urls;
-  const specs = [
-    { label: '線上取號', action: { type: 'uri', uri: liffUrl } },
-    { label: '預點餐', action: { type: 'uri', uri: menuUrl } },
-    { label: '現場等候', action: { type: 'postback', data: 'action=waiting_count', displayText: '現場等候' } },
-    { label: '我的號碼', action: { type: 'postback', data: 'action=my_status', displayText: '我的號碼' } },
-    { label: '菜色評論', action: { type: 'postback', data: 'action=dish_review_help', displayText: '菜色評論' } }
-  ];
-
-  return specs.map((spec, i) => ({
-    bounds: { x: Math.floor(i * COL_W), y: 0, width: Math.floor(COL_W), height: MENU_HEIGHT },
-    action: spec.action
-  }));
-}
+const { MENU_WIDTH, MENU_HEIGHT, buildRichMenuAreas } = require('./richMenuSpecs');
 
 async function createAndSetDefaultRichMenu({ imagePath, liffUrl, menuUrl }) {
   if (!isLineConfigured()) {
@@ -33,13 +13,14 @@ async function createAndSetDefaultRichMenu({ imagePath, liffUrl, menuUrl }) {
 
   const client = getClient();
   const blobClient = getBlobClient();
+  const urls = { liffUrl, menuUrl };
 
   const richMenu = await client.createRichMenu({
     size: { width: MENU_WIDTH, height: MENU_HEIGHT },
     selected: true,
-    name: 'restaurant-mvp-menu',
+    name: 'restaurant-mvp-menu-2x2',
     chatBarText: '選單',
-    areas: buildAreas({ liffUrl, menuUrl })
+    areas: buildRichMenuAreas(urls)
   });
 
   const richMenuId = richMenu.richMenuId;
