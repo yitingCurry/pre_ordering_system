@@ -175,7 +175,10 @@ export default function Staff() {
       const res = await fetch(`${API}/orders/today-items`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || '取得品項失敗');
-      setTodayItems(Array.isArray(data.items) ? data.items : data.items || []);
+      const items = Array.isArray(data.items) ? data.items : data.items || [];
+      setTodayItems(
+        [...items].sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0))
+      );
     } catch {
       setTodayItems([]);
     } finally {
@@ -444,8 +447,8 @@ export default function Staff() {
               <span className="colHeaderSub">餐點名稱 · 點餐次數（由高到低）</span>
             </div>
             <div className="orderPanel">
-              <div style={{ padding: 12 }}>
-                <div style={{ marginBottom: 8 }}>
+              <div className="todayItemsPanel">
+                <div className="todayItemsToolbar">
                   <button className="actionBtn" onClick={loadTodayItems} disabled={!API || todayItemsLoading}>
                     重新載入今日餐點品項
                   </button>
@@ -455,13 +458,14 @@ export default function Staff() {
                   <div className="muted">今日尚無餐點或未載入</div>
                 )}
                 {!todayItemsLoading && todayItems && todayItems.length > 0 && (
-                  <div className="orderItems">
-                    {todayItems.map((it) => (
-                      <div key={it.id || it.name} className="queueItem" style={{ justifyContent: 'space-between', background:'rgba(255,255,255,.72)' }}>
-                        <div style={{ color: '#222' }} className="queueSubtitle">
+                  <div className="todayItemsList">
+                    {todayItems.map((it, index) => (
+                      <div key={it.id || it.name} className="todayItemRow">
+                        <div className="todayItemRank">{index + 1}</div>
+                        <div className="todayItemName">
                           {it.name}
                         </div>
-                        <div style={{ color: '#666' }} className="queueMeta">
+                        <div className="todayItemCount">
                           {it.count} 次
                         </div>
                       </div>
@@ -497,7 +501,6 @@ export default function Staff() {
                       <th>滿意</th>
                       <th>普通</th>
                       <th>不滿意</th>
-                      <th>小計</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -510,7 +513,6 @@ export default function Staff() {
                           <td><span className="fbVote good">{dim.good}</span></td>
                           <td><span className="fbVote ok">{dim.ok}</span></td>
                           <td><span className="fbVote bad">{dim.bad}</span></td>
-                          <td><span className="fbVote total">{dim.total}</span></td>
                         </tr>
                       );
                     })}

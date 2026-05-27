@@ -160,13 +160,22 @@ button{ -webkit-tap-highlight-color:transparent }
 .feedbackSummaryTable{width:100%;border-collapse:collapse;font-size:13px}
 .feedbackSummaryTable th,.feedbackSummaryTable td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--line)}
 .feedbackSummaryTable thead th{font-size:11px;font-weight:800;color:var(--muted);text-transform:none;letter-spacing:0}
-.feedbackSummaryTable tbody th[scope="row"]{text-align:left;font-weight:800;color:var(--ink);white-space:nowrap}
+.feedbackSummaryTable tbody th[scope="row"]{text-align:center;font-weight:800;color:var(--ink);white-space:nowrap}
 .feedbackSummaryTable tbody tr:last-child th,.feedbackSummaryTable tbody tr:last-child td{border-bottom:none}
 .fbVote{display:inline-block;min-width:28px;padding:4px 8px;border-radius:8px;font-weight:800;font-size:13px;line-height:1.2}
 .fbVote.good{color:var(--success);background:rgba(21,128,61,.1);border:1px solid rgba(21,128,61,.2)}
 .fbVote.ok{color:#a16207;background:rgba(255,241,220,.85);border:1px solid rgba(180,83,9,.18)}
 .fbVote.bad{color:var(--danger);background:rgba(254,226,226,.65);border:1px solid rgba(220,38,38,.18)}
 .fbVote.total{color:var(--brand-dark);background:#fff;border:1px solid var(--line)}
+
+/* Today's item summary */
+.todayItemsPanel{padding:16px;background:linear-gradient(145deg,#fffdf8 0%,#eefaf6 100%);border:1px solid rgba(15,118,110,.14);border-radius:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.82)}
+.todayItemsToolbar{display:flex;justify-content:flex-end;margin-bottom:12px}
+.todayItemsList{display:flex;flex-direction:column;gap:9px}
+.todayItemRow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid rgba(15,118,110,.14);border-radius:12px;background:rgba(255,255,255,.78);box-shadow:0 8px 18px rgba(20,83,75,.07)}
+.todayItemRank{width:30px;height:30px;display:grid;place-items:center;flex:0 0 auto;border-radius:9px;background:#ecfdf5;color:#0f766e;font-size:12px;font-weight:900;border:1px solid rgba(15,118,110,.16)}
+.todayItemName{min-width:0;flex:1;color:#243128;font-size:14px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.todayItemCount{flex:0 0 auto;min-width:66px;text-align:center;padding:7px 10px;border-radius:999px;background:linear-gradient(180deg,#fff7ed,#ffedd5);color:#8a3b05;font-size:13px;font-weight:900;border:1px solid rgba(180,83,9,.16)}
 
 .revenueSection{margin:0 24px 24px;display:flex;flex-direction:column;gap:12px}
 .revenueToggleBtn{width:100%;border:1px solid rgba(15,118,110,.25);border-radius:var(--radius);cursor:pointer;padding:14px 18px;font-size:14px;font-weight:800;color:#115e59;background:linear-gradient(180deg,#f0fdfa,#ccfbf1);box-shadow:var(--shadow-sm);transition:transform .16s ease,box-shadow .16s ease,background .16s ease}
