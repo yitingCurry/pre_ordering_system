@@ -1,0 +1,25 @@
+{
+  "name": "pre_ordering_system",
+  "version": "1.0.0",
+  "description": "A working MVP for a traditional Hong Kong restaurant queue and pre-order system, with **LINE LIFF** entry and **LINE Push** notifications.",
+  "main": "index.js",
+  "scripts": {
+    "test:e2e": "playwright test --config=e2e/playwright.config.js",
+    "test:e2e:ui": "playwright test --config=e2e/playwright.config.js --ui"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/felixleong0918/pre_ordering_system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/felixleong0918/pre_ordering_system/issues"
+  },
+  "homepage": "https://github.com/felixleong0918/pre_ordering_system#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}

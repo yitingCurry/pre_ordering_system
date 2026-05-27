@@ -10,6 +10,49 @@ const DIM_COLUMN = {
   service: 'rating_service'
 };
 
+const DIM_FIELDS = [
+  { key: 'overall', column: 'rating' },
+  { key: 'wait', column: 'rating_wait' },
+  { key: 'food', column: 'rating_food' },
+  { key: 'service', column: 'rating_service' }
+];
+
+function emptyDimensionCounts(label) {
+  return { label, good: 0, ok: 0, bad: 0, total: 0 };
+}
+
+function buildFeedbackSummary(rows) {
+  const dimensions = {};
+  for (const { key } of DIM_FIELDS) {
+    dimensions[key] = emptyDimensionCounts(labelDim(key));
+  }
+
+  let completeCount = 0;
+  let totalVotes = 0;
+
+  for (const row of rows || []) {
+    if (isFeedbackComplete(row)) completeCount += 1;
+
+    for (const { key, column } of DIM_FIELDS) {
+      const value = row[column];
+      if (!VALID_RATINGS.has(value)) continue;
+      dimensions[key][value] += 1;
+      dimensions[key].total += 1;
+      totalVotes += 1;
+    }
+  }
+
+  const responseCount = rows?.length || 0;
+
+  return {
+    responseCount,
+    completeCount,
+    inProgressCount: responseCount - completeCount,
+    dimensions,
+    totalVotes
+  };
+}
+
 const SKIP_COMMENT_WORDS = new Set(['略過', '跳过', '跳過', '不用', '無', '无']);
 
 function parsePostbackData(data) {
@@ -181,8 +224,10 @@ module.exports = {
   saveFeedback,
   replyMessage,
   formatFeedbackItem,
+  buildFeedbackSummary,
   isFeedbackComplete,
   isFeedbackFinished,
+  DIM_FIELDS,
   labelRating,
   labelDim
 };

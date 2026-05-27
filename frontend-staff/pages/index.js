@@ -38,9 +38,14 @@ export default function Staff() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [feedbackItems, setFeedbackItems] = useState([]);
+  const [feedbackSummary, setFeedbackSummary] = useState(null);
+
+  const FEEDBACK_DIM_KEYS = ['overall', 'wait', 'food', 'service'];
   const [showTodayRevenue, setShowTodayRevenue] = useState(false);
   const [todayRevenue, setTodayRevenue] = useState(null);
   const [todayRevenueLoading, setTodayRevenueLoading] = useState(false);
+  const [todayItems, setTodayItems] = useState([]);
+  const [todayItemsLoading, setTodayItemsLoading] = useState(false);
 
   const isCallNextDisabled = actionLoadingId !== null;
 
@@ -55,7 +60,15 @@ export default function Staff() {
     try {
       const res = await fetch(`${API}/queue`);
       const data = await res.json();
-      setQueueData({ ...data, queue: data.queue.filter((item) => item.status !== 'skipped') });
+      // 隱藏已過號與已完成的訂單（例如 status === 'skipped' 或 'done'）
+      const visibleQueue = (data.queue || []).filter((item) => item.status !== 'skipped' && item.status !== 'done');
+      setQueueData({ ...data, queue: visibleQueue, allQueue: data.queue });
+      // 若目前選取的號碼已被隱藏，清除選取與已載入的訂單明細
+      if (selectedQueueId && !visibleQueue.find((i) => i.id === selectedQueueId)) {
+        setSelectedQueueId(null);
+        setSelectedQueueNumber(null);
+        setOrder(null);
+      }
     } catch {
       setMessage('無法取得隊列資料');
     }
@@ -155,6 +168,24 @@ export default function Staff() {
     }
   }
 
+  async function loadTodayItems() {
+    if (!API) return;
+    setTodayItemsLoading(true);
+    try {
+      const res = await fetch(`${API}/orders/today-items`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '取得品項失敗');
+      const items = Array.isArray(data.items) ? data.items : data.items || [];
+      setTodayItems(
+        [...items].sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0))
+      );
+    } catch {
+      setTodayItems([]);
+    } finally {
+      setTodayItemsLoading(false);
+    }
+  }
+
   async function toggleTodayRevenue() {
     if (showTodayRevenue) {
       setShowTodayRevenue(false);
@@ -171,8 +202,10 @@ export default function Staff() {
       if (!res.ok) return;
       const data = await res.json();
       setFeedbackItems(data.items || []);
+      setFeedbackSummary(data.summary || null);
     } catch {
       setFeedbackItems([]);
+      setFeedbackSummary(null);
     }
   }
 
@@ -316,7 +349,7 @@ export default function Staff() {
                               <button
                                 className="actionBtn seatBtn"
                                 disabled={busy}
-                                onClick={(e) => { e.stopPropagation(); updateQueueStatus(item.id, 'seat'); }}
+                                onClick={(e) => { e.stopPropagation(); updateQueueStatus(item.id, 'seat'); loadTodayItems(); }}
                               >確認入座</button>
                             </div>
                           )}
@@ -325,7 +358,7 @@ export default function Staff() {
                               <button
                                 className="actionBtn leaveBtn"
                                 disabled={busy}
-                                onClick={(e) => { e.stopPropagation(); guestLeft(item.id, item.number); }}
+                                onClick={(e) => { e.stopPropagation(); guestLeft(item.id, item.number); loadTodayItems(); }}
                               >客人已離開</button>
                             </div>
                           )}
@@ -379,16 +412,114 @@ export default function Staff() {
               )}
             </div>
           </div>
+
+          {/* 下方：已完成訂單（顯示 status === 'done'） */}
+          <div className="col">
+            <div className="colHeader">
+              <div className="sectionTitle">已完成訂單</div>
+              <span className="colHeaderSub">今日已完成的號碼</span>
+            </div>
+            <div className="queueList">
+              {((queueData.allQueue || []).filter((i) => i.status === 'done')).length === 0 && (
+                <div className="muted" style={{ padding: '6px 4px 10px', fontSize: 12 }}>今日尚無完成訂單</div>
+              )}
+              {((queueData.allQueue || []).filter((i) => i.status === 'done')).map((item) => (
+                <div key={item.id} className="queueItem">
+                  <div className="queueInfo">
+                    <div className="queueTop">{item.number}</div>
+                    <div>
+                      <div className="queueSubtitle">{item.hasOrder ? '有預點餐' : '未預點餐'}</div>
+                      <div className="queueMeta">{partyOf(item)} 人</div>
+                    </div>
+                  </div>
+                  <div className="queueRight">
+                    <span className={`statusTag done`}>完成</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 下方：今日餐點品項總計 */}
+          <div className="col">
+            <div className="colHeader">
+              <div className="sectionTitle">今日餐點總計</div>
+              <span className="colHeaderSub">餐點名稱 · 點餐次數（由高到低）</span>
+            </div>
+            <div className="orderPanel">
+              <div className="todayItemsPanel">
+                <div className="todayItemsToolbar">
+                  <button className="actionBtn" onClick={loadTodayItems} disabled={!API || todayItemsLoading}>
+                    重新載入今日餐點品項
+                  </button>
+                </div>
+                {todayItemsLoading && <div className="muted">載入中…</div>}
+                {!todayItemsLoading && todayItems && todayItems.length === 0 && (
+                  <div className="muted">今日尚無餐點或未載入</div>
+                )}
+                {!todayItemsLoading && todayItems && todayItems.length > 0 && (
+                  <div className="todayItemsList">
+                    {todayItems.map((it, index) => (
+                      <div key={it.id || it.name} className="todayItemRow">
+                        <div className="todayItemRank">{index + 1}</div>
+                        <div className="todayItemName">
+                          {it.name}
+                        </div>
+                        <div className="todayItemCount">
+                          {it.count} 次
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* ── Today's feedback ── */}
         <section className="feedbackSection">
           <div className="feedbackHeader">
             <div className="sectionTitle">今日回饋</div>
-            <span className="feedbackCount">{feedbackItems.length} 則</span>
+            <span className="feedbackCount">
+              {feedbackSummary
+                ? `今日 ${feedbackSummary.responseCount} 則 · 完整 ${feedbackSummary.completeCount} 則 · 共 ${feedbackSummary.totalVotes} 票`
+                : `${feedbackItems.length} 則`}
+            </span>
           </div>
           {feedbackItems.length === 0 && (
             <div className="feedbackEmpty">今日尚無客人回饋</div>
+          )}
+          {feedbackItems.length > 0 && feedbackSummary && (
+            <div className="feedbackSummary">
+              <div className="feedbackSummaryTitle">票數總覽</div>
+              <div className="feedbackSummaryTableWrap">
+                <table className="feedbackSummaryTable">
+                  <thead>
+                    <tr>
+                      <th>維度</th>
+                      <th>滿意</th>
+                      <th>普通</th>
+                      <th>不滿意</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {FEEDBACK_DIM_KEYS.map((key) => {
+                      const dim = feedbackSummary.dimensions[key];
+                      if (!dim) return null;
+                      return (
+                        <tr key={key}>
+                          <th scope="row">{dim.label}</th>
+                          <td><span className="fbVote good">{dim.good}</span></td>
+                          <td><span className="fbVote ok">{dim.ok}</span></td>
+                          <td><span className="fbVote bad">{dim.bad}</span></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
           {feedbackItems.length > 0 && (
             <div className="feedbackList">
