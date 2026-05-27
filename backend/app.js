@@ -497,6 +497,30 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
     }
   });
 
+  app.get('/orders/today-items', async (req, res) => {
+    try {
+      const rows = await allSql(`SELECT items FROM orders WHERE date(created_at) = date('now', 'localtime')`);
+      const counts = {};
+      for (const row of rows) {
+        let items = [];
+        try { items = JSON.parse(row.items); } catch (e) { items = []; }
+        if (!Array.isArray(items)) continue;
+        for (const it of items) {
+          const key = it.id || it.name || JSON.stringify(it);
+          const name = it.name || (it.id ? `#${it.id}` : '未知品項');
+          const qty = Number(it.quantity) || 1;
+          if (!counts[key]) counts[key] = { id: it.id || null, name, count: 0 };
+          counts[key].count += qty;
+        }
+      }
+      const list = Object.values(counts).filter((i) => i.count > 0).sort((a, b) => b.count - a.count);
+      res.json({ items: list });
+    } catch (e) {
+      console.error('orders/today-items', e);
+      res.status(500).json({ error: '取得今日餐點品項失敗' });
+    }
+  });
+
   app.get('/feedback/today', async (req, res) => {
     try {
       const rows = await allSql(

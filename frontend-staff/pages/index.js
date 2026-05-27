@@ -44,6 +44,8 @@ export default function Staff() {
   const [showTodayRevenue, setShowTodayRevenue] = useState(false);
   const [todayRevenue, setTodayRevenue] = useState(null);
   const [todayRevenueLoading, setTodayRevenueLoading] = useState(false);
+  const [todayItems, setTodayItems] = useState([]);
+  const [todayItemsLoading, setTodayItemsLoading] = useState(false);
 
   const isCallNextDisabled = actionLoadingId !== null;
 
@@ -58,7 +60,15 @@ export default function Staff() {
     try {
       const res = await fetch(`${API}/queue`);
       const data = await res.json();
-      setQueueData({ ...data, queue: data.queue.filter((item) => item.status !== 'skipped') });
+      // 隱藏已過號與已完成的訂單（例如 status === 'skipped' 或 'done'）
+      const visibleQueue = (data.queue || []).filter((item) => item.status !== 'skipped' && item.status !== 'done');
+      setQueueData({ ...data, queue: visibleQueue, allQueue: data.queue });
+      // 若目前選取的號碼已被隱藏，清除選取與已載入的訂單明細
+      if (selectedQueueId && !visibleQueue.find((i) => i.id === selectedQueueId)) {
+        setSelectedQueueId(null);
+        setSelectedQueueNumber(null);
+        setOrder(null);
+      }
     } catch {
       setMessage('無法取得隊列資料');
     }
@@ -155,6 +165,21 @@ export default function Staff() {
       setTodayRevenue({ error: true });
     } finally {
       setTodayRevenueLoading(false);
+    }
+  }
+
+  async function loadTodayItems() {
+    if (!API) return;
+    setTodayItemsLoading(true);
+    try {
+      const res = await fetch(`${API}/orders/today-items`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '取得品項失敗');
+      setTodayItems(Array.isArray(data.items) ? data.items : data.items || []);
+    } catch {
+      setTodayItems([]);
+    } finally {
+      setTodayItemsLoading(false);
     }
   }
 
@@ -321,7 +346,7 @@ export default function Staff() {
                               <button
                                 className="actionBtn seatBtn"
                                 disabled={busy}
-                                onClick={(e) => { e.stopPropagation(); updateQueueStatus(item.id, 'seat'); }}
+                                onClick={(e) => { e.stopPropagation(); updateQueueStatus(item.id, 'seat'); loadTodayItems(); }}
                               >確認入座</button>
                             </div>
                           )}
@@ -330,7 +355,7 @@ export default function Staff() {
                               <button
                                 className="actionBtn leaveBtn"
                                 disabled={busy}
-                                onClick={(e) => { e.stopPropagation(); guestLeft(item.id, item.number); }}
+                                onClick={(e) => { e.stopPropagation(); guestLeft(item.id, item.number); loadTodayItems(); }}
                               >客人已離開</button>
                             </div>
                           )}
@@ -382,6 +407,68 @@ export default function Staff() {
                   <div className="tip">此頁僅供參考，實際出單仍由店員手寫。客人入座後仍可加點。</div>
                 </>
               )}
+            </div>
+          </div>
+
+          {/* 下方：已完成訂單（顯示 status === 'done'） */}
+          <div className="col">
+            <div className="colHeader">
+              <div className="sectionTitle">已完成訂單</div>
+              <span className="colHeaderSub">今日已完成的號碼</span>
+            </div>
+            <div className="queueList">
+              {((queueData.allQueue || []).filter((i) => i.status === 'done')).length === 0 && (
+                <div className="muted" style={{ padding: '6px 4px 10px', fontSize: 12 }}>今日尚無完成訂單</div>
+              )}
+              {((queueData.allQueue || []).filter((i) => i.status === 'done')).map((item) => (
+                <div key={item.id} className="queueItem">
+                  <div className="queueInfo">
+                    <div className="queueTop">{item.number}</div>
+                    <div>
+                      <div className="queueSubtitle">{item.hasOrder ? '有預點餐' : '未預點餐'}</div>
+                      <div className="queueMeta">{partyOf(item)} 人</div>
+                    </div>
+                  </div>
+                  <div className="queueRight">
+                    <span className={`statusTag done`}>完成</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 下方：今日餐點品項總計 */}
+          <div className="col">
+            <div className="colHeader">
+              <div className="sectionTitle">今日餐點總計</div>
+              <span className="colHeaderSub">餐點名稱 · 點餐次數（由高到低）</span>
+            </div>
+            <div className="orderPanel">
+              <div style={{ padding: 12 }}>
+                <div style={{ marginBottom: 8 }}>
+                  <button className="actionBtn" onClick={loadTodayItems} disabled={!API || todayItemsLoading}>
+                    重新載入今日餐點品項
+                  </button>
+                </div>
+                {todayItemsLoading && <div className="muted">載入中…</div>}
+                {!todayItemsLoading && todayItems && todayItems.length === 0 && (
+                  <div className="muted">今日尚無餐點或未載入</div>
+                )}
+                {!todayItemsLoading && todayItems && todayItems.length > 0 && (
+                  <div className="orderItems">
+                    {todayItems.map((it) => (
+                      <div key={it.id || it.name} className="queueItem" style={{ justifyContent: 'space-between', background:'rgba(255,255,255,.72)' }}>
+                        <div style={{ color: '#222' }} className="queueSubtitle">
+                          {it.name}
+                        </div>
+                        <div style={{ color: '#666' }} className="queueMeta">
+                          {it.count} 次
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
