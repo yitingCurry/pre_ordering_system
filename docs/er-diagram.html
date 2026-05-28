@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Restaurant MVP ER Diagram</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fa;
+      --ink: #17202a;
+      --muted: #56616f;
+      --line: #516173;
+      --table: #ffffff;
+      --table-border: #26384a;
+      --header: #20364d;
+      --header-text: #ffffff;
+      --storage: #e8f2ff;
+      --json: #fff4d8;
+      --external: #eef8ed;
+      --note: #f1f3f5;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "Noto Sans TC", sans-serif;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 20px 40px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0 0 20px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .diagram {
+      width: 100%;
+      overflow-x: auto;
+      background: #ffffff;
+      border: 1px solid #d8dee6;
+      border-radius: 8px;
+    }
+
+    svg {
+      display: block;
+      min-width: 1120px;
+      height: auto;
+    }
+
+    .connector {
+      stroke: var(--line);
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .connector-dash {
+      stroke-dasharray: 7 6;
+    }
+
+    .table-box {
+      fill: var(--table);
+      stroke: var(--table-border);
+      stroke-width: 1.5;
+      rx: 8;
+    }
+
+    .table-header {
+      fill: var(--header);
+      rx: 8;
+    }
+
+    .table-title {
+      fill: var(--header-text);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .field {
+      fill: var(--ink);
+      font-size: 14px;
+    }
+
+    .field-muted {
+      fill: var(--muted);
+      font-size: 13px;
+    }
+
+    .key {
+      font-weight: 700;
+    }
+
+    .json-box {
+      fill: var(--json);
+      stroke: #b88717;
+      stroke-width: 1.5;
+      rx: 8;
+    }
+
+    .external-box {
+      fill: var(--external);
+      stroke: #527a52;
+      stroke-width: 1.5;
+      rx: 8;
+    }
+
+    .note-box {
+      fill: var(--note);
+      stroke: #9099a4;
+      stroke-width: 1.2;
+      rx: 8;
+    }
+
+    .box-title {
+      fill: var(--ink);
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .small {
+      fill: var(--muted);
+      font-size: 13px;
+    }
+
+    .cardinality {
+      fill: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid #8b96a3;
+      background: #fff;
+    }
+
+    .swatch.json {
+      background: var(--json);
+      border-color: #b88717;
+    }
+
+    .swatch.external {
+      background: var(--external);
+      border-color: #527a52;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Restaurant MVP ER Diagram</h1>
+    <p class="subtitle">根據目前 backend SQLite schema 產生。`orders.items` 是 JSON 欄位，不是獨立資料表；`dish_reviews.menuItemId` 對應前端菜單項目 ID。</p>
+
+    <div class="diagram" aria-label="Restaurant MVP entity relationship diagram">
+      <svg viewBox="0 0 1120 760" role="img" aria-labelledby="title desc" xmlns="http://www.w3.org/2000/svg">
+        <title id="title">Restaurant MVP ER Diagram</title>
+        <desc id="desc">Queue links one-to-zero-or-one orders and one-to-zero-or-one feedback responses. Dish reviews reference menu items by menuItemId.</desc>
+
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L8,3 L0,6 Z" fill="#516173"></path>
+          </marker>
+        </defs>
+
+        <!-- Relationships -->
+        <path class="connector" d="M365 227 C430 227, 455 227, 520 227" marker-end="url(#arrow)"></path>
+        <text class="cardinality" x="385" y="212">1</text>
+        <text class="cardinality" x="462" y="212">0..1</text>
+
+        <path class="connector" d="M365 353 C430 353, 455 485, 520 485" marker-end="url(#arrow)"></path>
+        <text class="cardinality" x="385" y="342">1</text>
+        <text class="cardinality" x="459" y="470">0..1</text>
+
+        <path class="connector connector-dash" d="M810 232 C850 232, 850 150, 910 150" marker-end="url(#arrow)"></path>
+        <text class="cardinality" x="830" y="218">contains many</text>
+
+        <path class="connector connector-dash" d="M910 532 C850 532, 850 400, 810 400" marker-end="url(#arrow)"></path>
+        <text class="cardinality" x="815" y="515">menuItemId</text>
+
+        <!-- queue -->
+        <g transform="translate(60 90)">
+          <rect class="table-box" width="305" height="335"></rect>
+          <path class="table-header" d="M8 0 H297 A8 8 0 0 1 305 8 V48 H0 V8 A8 8 0 0 1 8 0 Z"></path>
+          <text class="table-title" x="22" y="31">queue</text>
+          <text class="field key" x="22" y="78">PK id INTEGER</text>
+          <text class="field" x="22" y="103">number INTEGER NOT NULL</text>
+          <text class="field" x="22" y="128">status TEXT DEFAULT 'waiting'</text>
+          <text class="field-muted" x="42" y="150">waiting / called / skipped / seated / done</text>
+          <text class="field" x="22" y="178">deviceToken TEXT</text>
+          <text class="field" x="22" y="203">partySize INTEGER DEFAULT 1</text>
+          <text class="field" x="22" y="228">lineUserId TEXT</text>
+          <text class="field" x="22" y="253">created_at DATETIME</text>
+          <text class="field" x="22" y="278">seatedAt DATETIME</text>
+          <text class="field-muted" x="22" y="305">notification timestamps:</text>
+          <text class="field-muted" x="42" y="327">almostCalled / warn10 / reminder / feedback</text>
+        </g>
+
+        <!-- orders -->
+        <g transform="translate(520 120)">
+          <rect class="table-box" width="290" height="230"></rect>
+          <path class="table-header" d="M8 0 H282 A8 8 0 0 1 290 8 V48 H0 V8 A8 8 0 0 1 8 0 Z"></path>
+          <text class="table-title" x="22" y="31">orders</text>
+          <text class="field key" x="22" y="78">PK id INTEGER</text>
+          <text class="field key" x="22" y="103">FK queueId INTEGER NOT NULL</text>
+          <text class="field" x="22" y="128">items TEXT NOT NULL</text>
+          <text class="field-muted" x="42" y="150">JSON array of selected dishes</text>
+          <text class="field" x="22" y="178">note TEXT</text>
+          <text class="field" x="22" y="203">created_at DATETIME</text>
+        </g>
+
+        <!-- feedback -->
+        <g transform="translate(520 405)">
+          <rect class="table-box" width="310" height="285"></rect>
+          <path class="table-header" d="M8 0 H302 A8 8 0 0 1 310 8 V48 H0 V8 A8 8 0 0 1 8 0 Z"></path>
+          <text class="table-title" x="22" y="31">feedback_responses</text>
+          <text class="field key" x="22" y="78">PK id INTEGER</text>
+          <text class="field key" x="22" y="103">FK queueId INTEGER NOT NULL</text>
+          <text class="field" x="22" y="128">lineUserId TEXT NOT NULL</text>
+          <text class="field" x="22" y="153">rating TEXT NOT NULL</text>
+          <text class="field-muted" x="42" y="175">overall satisfaction</text>
+          <text class="field" x="22" y="203">rating_wait TEXT</text>
+          <text class="field" x="22" y="228">rating_food TEXT</text>
+          <text class="field" x="22" y="253">rating_service TEXT</text>
+          <text class="field" x="22" y="278">comment TEXT</text>
+          <text class="field" x="22" y="303">awaiting_comment INTEGER DEFAULT 0</text>
+        </g>
+
+        <!-- JSON embedded order items -->
+        <g transform="translate(910 70)">
+          <rect class="json-box" width="165" height="165"></rect>
+          <text class="box-title" x="18" y="32">OrderItem JSON</text>
+          <text class="small" x="18" y="62">id</text>
+          <text class="small" x="18" y="84">name</text>
+          <text class="small" x="18" y="106">price</text>
+          <text class="small" x="18" y="128">quantity</text>
+          <text class="small" x="18" y="150">variant / options</text>
+        </g>
+
+        <!-- dish reviews -->
+        <g transform="translate(60 485)">
+          <rect class="table-box" width="305" height="205"></rect>
+          <path class="table-header" d="M8 0 H297 A8 8 0 0 1 305 8 V48 H0 V8 A8 8 0 0 1 8 0 Z"></path>
+          <text class="table-title" x="22" y="31">dish_reviews</text>
+          <text class="field key" x="22" y="78">PK id INTEGER</text>
+          <text class="field" x="22" y="103">menuItemId TEXT NOT NULL</text>
+          <text class="field" x="22" y="128">dishName TEXT NOT NULL</text>
+          <text class="field" x="22" y="153">reviewer TEXT</text>
+          <text class="field" x="22" y="178">rating TEXT</text>
+          <text class="field" x="22" y="203">content TEXT NOT NULL</text>
+        </g>
+
+        <!-- menu item external logical entity -->
+        <g transform="translate(910 455)">
+          <rect class="external-box" width="165" height="135"></rect>
+          <text class="box-title" x="18" y="32">MenuItem</text>
+          <text class="small" x="18" y="62">logical entity</text>
+          <text class="small" x="18" y="86">id matches</text>
+          <text class="small" x="18" y="108">menuItemId</text>
+        </g>
+
+        <!-- note -->
+        <g transform="translate(60 25)">
+          <rect class="note-box" width="710" height="42"></rect>
+          <text class="small" x="18" y="27">Main flow: customer takes a queue number, may save one draft order, then receives one feedback session after seating/leave flow.</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="legend" aria-label="Legend">
+      <span><i class="swatch"></i> SQLite table</span>
+      <span><i class="swatch json"></i> Embedded JSON structure</span>
+      <span><i class="swatch external"></i> Logical app entity, not a SQLite table</span>
+    </div>
+  </main>
+</body>
+</html>

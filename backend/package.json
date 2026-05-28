@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@line/bot-sdk": "^9.5.0",
+    "axios": "^1.16.1",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
