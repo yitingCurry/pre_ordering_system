@@ -17,8 +17,8 @@ async function runAlmostCalledJob(db) {
   for (const row of rows) {
     const ahead = await countWaitingAhead(db, row.id);
     if (ahead > threshold) continue;
-    const ok = await notify.pushAlmostCalled(row, ahead);
-    if (ok) {
+    const result = await notify.pushAlmostCalled(row, ahead);
+    if (result?.ok) {
       await db.run('UPDATE queue SET almostCalledSentAt = CURRENT_TIMESTAMP WHERE id = ?', [row.id]);
     }
   }
@@ -38,8 +38,8 @@ async function runSeatedWarnJob(db) {
     [warnAt]
   );
   for (const row of rows) {
-    const ok = await notify.pushSeatedWarn(row, warnBefore);
-    if (ok) {
+    const result = await notify.pushSeatedWarn(row, warnBefore);
+    if (result?.ok) {
       await db.run('UPDATE queue SET seatedWarn10SentAt = CURRENT_TIMESTAMP WHERE id = ?', [row.id]);
     }
   }
@@ -57,8 +57,8 @@ async function runSeatedEndJob(db) {
     [duration]
   );
   for (const row of rows) {
-    const ok = await notify.pushSeatedTimeUp(row);
-    if (ok) {
+    const result = await notify.pushSeatedTimeUp(row);
+    if (result?.ok) {
       await db.run(
         `UPDATE queue SET seatedReminderSentAt = CURRENT_TIMESTAMP,
          feedbackRequestedAt = CURRENT_TIMESTAMP WHERE id = ?`,

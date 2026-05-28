@@ -1,21 +1,36 @@
 const line = require('@line/bot-sdk');
 
+function channelAccessToken() {
+  return (process.env.LINE_CHANNEL_ACCESS_TOKEN || '').trim();
+}
+
+function channelSecret() {
+  return (process.env.LINE_CHANNEL_SECRET || '').trim();
+}
+
 function isLineConfigured() {
-  return !!(process.env.LINE_CHANNEL_ACCESS_TOKEN && process.env.LINE_CHANNEL_SECRET);
+  return !!(channelSecret() && channelAccessToken());
 }
 
 function getClient() {
   if (!isLineConfigured()) return null;
   return new line.messagingApi.MessagingApiClient({
-    channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN
+    channelAccessToken: channelAccessToken()
   });
 }
 
 function getBlobClient() {
   if (!isLineConfigured()) return null;
   return new line.messagingApi.MessagingApiBlobClient({
-    channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN
+    channelAccessToken: channelAccessToken()
   });
 }
 
-module.exports = { isLineConfigured, getClient, getBlobClient, line };
+module.exports = {
+  isLineConfigured,
+  getClient,
+  getBlobClient,
+  channelAccessToken,
+  channelSecret,
+  line
+};

@@ -49,11 +49,11 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
   // ---- External modules (notify / timer may be disabled for tests) ----
   const notify = disableNotify
     ? {
-        pushQueueTaken: () => Promise.resolve(),
-        pushCalled: () => Promise.resolve(),
-        pushSkipped: () => Promise.resolve(),
-        pushSeatedWelcome: () => Promise.resolve(),
-        pushFeedbackOnly: () => Promise.resolve(false)
+        pushQueueTaken: () => Promise.resolve({ ok: true }),
+        pushCalled: () => Promise.resolve({ ok: true }),
+        pushSkipped: () => Promise.resolve({ ok: true }),
+        pushSeatedWelcome: () => Promise.resolve({ ok: true }),
+        pushFeedbackOnly: () => Promise.resolve({ ok: true })
       }
     : require('./line/notify');
 
@@ -243,7 +243,18 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
     `);
   });
 
-  app.get('/health', (req, res) => res.json({ status: 'ok', service: 'backend', line: isLineConfigured() }));
+  app.get('/health', async (req, res) => {
+    const payload = { status: 'ok', service: 'backend', line: isLineConfigured() };
+    if (!isLineConfigured()) return res.json(payload);
+    try {
+      const client = require('./line/client').getClient();
+      const bot = await client.getBotInfo();
+      payload.lineBot = { displayName: bot.displayName, basicId: bot.basicId || null };
+    } catch (e) {
+      payload.lineBot = { error: e.message || 'LINE token 無效' };
+    }
+    res.json(payload);
+  });
 
   app.get('/customer-state/:deviceToken', async (req, res) => {
     try {
@@ -304,12 +315,17 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
         [nextNumber, 'waiting', token, partySize, lineUserId || null]
       );
       const created = await getSql('SELECT * FROM queue WHERE id = ?', [result.lastID]);
+      let lineNotify = { ok: false, skipped: true, reason: 'no_line_user_id', error: null };
       if (created.lineUserId) {
-        countWaitingAhead(dbApi, created.id)
-          .then((ahead) => notify.pushQueueTaken(created, ahead))
-          .catch((e) => console.error('pushQueueTaken', e));
+        try {
+          const ahead = await countWaitingAhead(dbApi, created.id);
+          lineNotify = await notify.pushQueueTaken(created, ahead);
+        } catch (e) {
+          console.error('pushQueueTaken', e);
+          lineNotify = { ok: false, skipped: false, reason: null, error: e.message || 'push failed' };
+        }
       }
-      res.status(201).json(created);
+      res.status(201).json({ ...created, lineNotify });
     } catch {
       res.status(500).json({ error: '建立號碼失敗' });
     }
@@ -425,7 +441,8 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
           feedbackSkipped = true;
           await runSql('UPDATE queue SET feedbackRequestedAt = COALESCE(feedbackRequestedAt, CURRENT_TIMESTAMP) WHERE id = ?', [id]);
         } else {
-          feedbackSent = await notify.pushFeedbackOnly(updated);
+          const pushResult = await notify.pushFeedbackOnly(updated);
+          feedbackSent = pushResult?.ok === true;
           if (feedbackSent) {
             await runSql('UPDATE queue SET feedbackRequestedAt = CURRENT_TIMESTAMP WHERE id = ?', [id]);
           }

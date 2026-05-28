@@ -44,6 +44,11 @@ A working MVP for a traditional Hong Kong restaurant queue and pre-order system,
    ```
 5. Webhook URL（後端部署後）：`https://<render-host>/line/webhook`，開啟 Use webhook
 
+**LIFF 與官方帳號必須同一 Provider（推播常見問題）**
+- LIFF 請在 **Messaging API 同一個 Channel** 底下建立（Console → 該 Channel → LIFF），不要另建獨立的 LINE Login Channel 再填不同的 LIFF ID。
+- 若 LIFF 與 `LINE_CHANNEL_ACCESS_TOKEN` 所屬 Channel **Provider 不同**，取號頁會顯示「LINE 通知已啟用」，但 Push 會失敗；Rich Menu / 聊天 Reply 仍可能正常。
+- 驗證 token：瀏覽器開 `https://<後端>/health`，應有 `lineBot.displayName`；取號後 API 回傳 `lineNotify.ok` 為 true 才代表推播成功。
+
 **聊天關鍵字（Webhook Reply）**
 - 等候／候位／幾組 → 全店等候組數
 - 我的號碼／候位／號碼狀態 → 個人候位狀態

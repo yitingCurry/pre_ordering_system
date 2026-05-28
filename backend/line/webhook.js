@@ -1,5 +1,4 @@
-const { line } = require('./client');
-const { isLineConfigured } = require('./client');
+const { line, channelSecret, isLineConfigured } = require('./client');
 const { getWaitingCount, formatWaitingReply, isWaitingCountMessage } = require('./waitingCount');
 const { parsePostbackData, handleFeedbackPostback, handleFeedbackComment, replyMessage } = require('./feedback');
 const { getMyStatusReply, isMyStatusMessage } = require('./myStatus');
@@ -17,7 +16,7 @@ function createLineWebhookHandler(db) {
     }
     const raw = body.toString();
     try {
-      if (!line.validateSignature(raw, process.env.LINE_CHANNEL_SECRET, signature)) {
+      if (!line.validateSignature(raw, channelSecret(), signature)) {
         return res.status(401).send('Invalid signature');
       }
     } catch {

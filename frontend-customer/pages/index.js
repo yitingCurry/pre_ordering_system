@@ -97,6 +97,7 @@ export default function Home() {
   const canUseLine = hasLiff && inClient && lineUserId;
   const canUseBrowser = !hasLiff || isDevBrowserAllowed();
   const mustScanLine = liffReady && hasLiff && !inClient && !canUseBrowser;
+  const needsLineLogin = liffReady && hasLiff && inClient && !lineUserId && !liffError;
   const needsAddFriend = canUseLine && friendship && !friendship.friendFlag;
 
   const waitingAheadRows = useMemo(() => {
@@ -163,6 +164,10 @@ export default function Home() {
       setMessage('請使用 LINE 掃描門口 QR 取號，以接收叫號與用餐時間通知。');
       return;
     }
+    if (needsLineLogin) {
+      setMessage('請先完成 LINE 登入授權後再取號，才能收到推播通知。');
+      return;
+    }
     const token = deviceToken || getDeviceToken();
     const body = { partySize: chosenSize };
     if (lineUserId) body.lineUserId = lineUserId;
@@ -179,7 +184,17 @@ export default function Home() {
       }
       setMyQueue(data);
       const label = getPartyLabel(data.partySize || chosenSize);
-      setMessage(`取號成功，你的號碼是 ${data.number}（${label}）${lineUserId ? '，LINE 通知已啟用' : ''}`);
+      let successMsg = `取號成功，你的號碼是 ${data.number}（${label}）`;
+      if (data.lineUserId && data.lineNotify?.ok) {
+        successMsg += '，LINE 取號通知已送出';
+      } else if (data.lineUserId && data.lineNotify?.error) {
+        successMsg += `。但 LINE 推播失敗：${data.lineNotify.error}（請確認已加入官方帳號好友）`;
+      } else if (data.lineUserId) {
+        successMsg += '，已綁定 LINE';
+      } else {
+        successMsg += '（未綁定 LINE，不會收到推播，請用 LINE 掃碼重新取號）';
+      }
+      setMessage(successMsg);
       await loadQueueBoard();
       await loadMyState();
     } catch {
@@ -249,6 +264,13 @@ export default function Home() {
           <div className="alertError">LIFF 載入失敗：{liffError}</div>
         )}
 
+        {needsLineLogin && (
+          <div className="listCard">
+            <div className="sectionTitle">需要 LINE 登入</div>
+            <div className="sectionText">請允許登入以綁定你的 LINE 帳號，才能收到取號與叫號推播。</div>
+          </div>
+        )}
+
         {needsAddFriend && (
           <div className="listCard">
             <div className="sectionTitle">開啟 LINE 通知</div>
@@ -280,7 +302,7 @@ export default function Home() {
             {message && <div className={messageClass}>{message}</div>}
             {partyPickerBlock}
             <div className="actionBlock">
-              <button type="button" className="orangeBtn" onClick={() => takeNumber()} disabled={mustScanLine}>我要取號</button>
+              <button type="button" className="orangeBtn" onClick={() => takeNumber()} disabled={mustScanLine || needsLineLogin}>我要取號</button>
               <button type="button" className="outlineBtn" onClick={() => router.push('/menu')}>查看 / 修改預選餐點</button>
             </div>
 

@@ -8,15 +8,35 @@ const {
 
 const SEATED_DURATION = () => Number(process.env.SEATED_DURATION_MINUTES) || 60;
 
+function formatLineError(err) {
+  if (err?.body?.message) return String(err.body.message);
+  if (err?.originalError?.response?.data?.message) return String(err.originalError.response.data.message);
+  return err?.message || 'LINE push failed';
+}
+
+/** @returns {{ ok: boolean, skipped?: boolean, reason?: string, error?: string }} */
+function pushResult(ok, { skipped, reason, error } = {}) {
+  return { ok, skipped: !!skipped, reason: reason || null, error: error || null };
+}
+
 async function pushToUser(lineUserId, messages) {
-  if (!lineUserId || !isLineConfigured()) return false;
+  if (!lineUserId) return pushResult(false, { skipped: true, reason: 'no_line_user_id' });
+  if (!isLineConfigured()) return pushResult(false, { skipped: true, reason: 'line_not_configured' });
   const client = getClient();
   try {
-    await client.pushMessage({ to: lineUserId, messages });
-    return true;
+    await client.getProfile(lineUserId);
   } catch (err) {
-    console.error('LINE push failed:', err.message);
-    return false;
+    const error = `userId 無法用於此官方帳號推播（LIFF 可能綁在另一個 Provider 的 Channel）：${formatLineError(err)}`;
+    console.error('LINE getProfile failed:', error);
+    return pushResult(false, { error });
+  }
+  try {
+    await client.pushMessage({ to: lineUserId, messages });
+    return pushResult(true);
+  } catch (err) {
+    const error = formatLineError(err);
+    console.error('LINE push failed:', error);
+    return pushResult(false, { error });
   }
 }
 
@@ -35,7 +55,7 @@ function formatOrderSummary(order) {
 }
 
 async function pushQueueTaken(queue, aheadCount) {
-  if (!queue?.lineUserId) return false;
+  if (!queue?.lineUserId) return pushResult(false, { skipped: true, reason: 'no_line_user_id' });
   const party = queue.partySize > 0 ? queue.partySize : 1;
   return pushToUser(queue.lineUserId, [{
     type: 'text',

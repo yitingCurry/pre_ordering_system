@@ -24,9 +24,9 @@ export function LiffProvider({ children }) {
     let cancelled = false;
     (async () => {
       const result = await initLiffApp();
-      if (cancelled) return;
+      if (cancelled || result.pendingLogin) return;
       setState({
-        liffReady: true,
+        liffReady: result.ready !== false,
         inClient: result.inClient,
         lineUserId: result.lineUserId,
         friendship: result.friendship,

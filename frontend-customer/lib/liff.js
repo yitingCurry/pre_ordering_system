@@ -8,11 +8,15 @@ export function hasLiffConfig() {
 
 export async function initLiffApp() {
   if (!LIFF_ID) {
-    return { ready: true, inClient: false, lineUserId: null, friendship: null, error: null };
+    return { ready: true, inClient: false, lineUserId: null, friendship: null, error: null, pendingLogin: false };
   }
   try {
     await liff.init({ liffId: LIFF_ID });
     const inClient = liff.isInClient();
+    if (inClient && !liff.isLoggedIn()) {
+      liff.login({ redirectUri: window.location.href.split('#')[0] });
+      return { ready: false, pendingLogin: true, inClient, lineUserId: null, friendship: null, error: null };
+    }
     let lineUserId = null;
     let friendship = null;
     if (liff.isLoggedIn()) {
@@ -27,9 +31,9 @@ export async function initLiffApp() {
     } catch {
       friendship = null;
     }
-    return { ready: true, inClient, lineUserId, friendship, error: null };
+    return { ready: true, pendingLogin: false, inClient, lineUserId, friendship, error: null };
   } catch (err) {
-    return { ready: true, inClient: false, lineUserId: null, friendship: null, error: err.message || 'LIFF 初始化失敗' };
+    return { ready: true, inClient: false, lineUserId: null, friendship: null, error: err.message || 'LIFF 初始化失敗', pendingLogin: false };
   }
 }
 
