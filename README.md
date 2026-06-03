@@ -109,7 +109,7 @@ docker compose up --build
 ```bash
 cd backend && npm install && npm start
 cd frontend-customer && npm install && npm run dev
-cd frontend-staff && npm install && npm run dev -p 3001
+cd frontend-staff && npm install && npm run dev
 ```
 
 本機 LIFF 測試需將 LIFF Endpoint 暫改為 ngrok 指向 `localhost:3000`，或使用 `ALLOW_BROWSER_QUEUE` 略過 LIFF。
@@ -117,7 +117,7 @@ cd frontend-staff && npm install && npm run dev -p 3001
 ## Access
 - 顧客端：http://localhost:3000
 - 店員端：http://localhost:3001
-- 後端：http://localhost:8000
+- 後端：http://localhost:8010
 - Health：http://localhost:8000/health
 
 ## Notes

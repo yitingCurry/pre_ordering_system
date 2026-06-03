@@ -2,12 +2,12 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "8010:8010"
     env_file: .env
     volumes:
       - ./database:/app/../database
     environment:
-      PORT: 8000
+      PORT: 8010
       DB_PATH: /app/../database/restaurant.db
 
   customer:
@@ -18,7 +18,7 @@ services:
       - backend
     env_file: .env
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8010
 
   staff:
     build: ./frontend-staff
@@ -27,4 +27,4 @@ services:
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_URL: http://backend:8000
+      NEXT_PUBLIC_API_URL: http://backend:8010

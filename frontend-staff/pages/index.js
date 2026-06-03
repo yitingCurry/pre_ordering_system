@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 function getApiBase() {
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (configured) return configured.replace(/\/$/, '');
-  if (typeof window === 'undefined') return '';
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return 'http://localhost:8000';
+  // 本機 dev 預設與後端一致；勿用 window，否則 SSR 與瀏覽器會不一致造成 hydration error
+  if (process.env.NODE_ENV === 'development') return 'http://localhost:8010';
   return '';
 }
 
@@ -39,6 +39,11 @@ export default function Staff() {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [feedbackItems, setFeedbackItems] = useState([]);
   const [feedbackSummary, setFeedbackSummary] = useState(null);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [dishSummaries, setDishSummaries] = useState([]);
+  const [dishSummaryLoading, setDishSummaryLoading] = useState(false);
+  const [dishSummaryError, setDishSummaryError] = useState('');
+  const [dishSummaryMeta, setDishSummaryMeta] = useState(null);
 
   const FEEDBACK_DIM_KEYS = ['overall', 'wait', 'food', 'service'];
   const [showTodayRevenue, setShowTodayRevenue] = useState(false);
@@ -195,6 +200,38 @@ export default function Staff() {
     await loadTodayRevenue();
   }
 
+  async function loadDishSummaries(refresh = false) {
+    if (!API) return;
+    setDishSummaryLoading(true);
+    setDishSummaryError('');
+    try {
+      const query = refresh ? '?refresh=1' : '';
+      const res = await fetch(`${API}/menu-items/review-summaries${query}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Unable to load dish summaries');
+      setDishSummaries(data.items || []);
+      setDishSummaryMeta({
+        aiAvailable: data.aiAvailable,
+        model: data.model,
+        cachedCount: data.cachedCount ?? 0,
+        generatedCount: data.generatedCount ?? 0
+      });
+    } catch (e) {
+      setDishSummaryError(e.message || 'Unable to load dish summaries');
+      setDishSummaries([]);
+      setDishSummaryMeta(null);
+    } finally {
+      setDishSummaryLoading(false);
+    }
+  }
+
+  async function openSummaryModal() {
+    setSummaryModalOpen(true);
+    if (dishSummaries.length === 0) {
+      await loadDishSummaries();
+    }
+  }
+
   async function loadFeedback() {
     if (!API) return;
     try {
@@ -245,10 +282,15 @@ export default function Staff() {
   const seatedCount = queueData.queue.filter((i) => i.status === 'seated').length;
   const orderSubtotal = order
     ? order.items.reduce((sum, item) => {
-        const found = /* menu lookup removed for brevity — replace with your menu import */ null;
+        const found = /* menu lookup removed for brevity – replace with your menu import */ null;
         return sum + (found ? found.price * (item.quantity || 1) : 0);
       }, 0)
     : 0;
+  const visibleDishSummaries = dishSummaries.filter((item) => (
+    !item.error &&
+    item.summary &&
+    item.summary !== '摘要產生失敗'
+  ));
 
   return (
     <div className="page">
@@ -299,6 +341,9 @@ export default function Staff() {
               叫 {cat.label}
             </button>
           ))}
+          <button className="summaryBtn" onClick={openSummaryModal} disabled={!API || dishSummaryLoading}>
+            菜色評論摘要
+          </button>
           <button className="clearBtn" onClick={() => setConfirmClear(true)}>清空今日列隊</button>
         </div>
 
@@ -570,6 +615,53 @@ export default function Staff() {
             </div>
           )}
         </section>
+
+        {/* ── AI review summary modal ── */}
+        {summaryModalOpen && (
+          <div className="modalOverlay">
+            <div className="summaryModal">
+              <div className="summaryModalHeader">
+                <div>
+                  <div className="modalEyebrow">Google 評論摘要</div>
+                  <div className="modalTitle">每道菜的重點回饋</div>
+                </div>
+                <button className="modalCloseBtn" onClick={() => setSummaryModalOpen(false)} aria-label="關閉">×</button>
+              </div>
+
+              <div className="summaryToolbar">
+                <div className="summaryMeta">
+                  {dishSummaryMeta?.cachedCount > 0 && dishSummaryMeta?.generatedCount === 0
+                    ? `已從快取載入 ${dishSummaryMeta.cachedCount} 道菜`
+                    : dishSummaryMeta?.generatedCount > 0
+                      ? `新整理 ${dishSummaryMeta.generatedCount} 道${dishSummaryMeta.cachedCount > 0 ? `，快取 ${dishSummaryMeta.cachedCount} 道` : ''}`
+                      : '僅整理有 Google 評論的菜色'}
+                </div>
+                <button className="actionBtn" onClick={() => loadDishSummaries(true)} disabled={dishSummaryLoading}>
+                  {dishSummaryLoading ? '整理中...' : '重新整理'}
+                </button>
+              </div>
+
+              {dishSummaryError && <div className="summaryError">{dishSummaryError}</div>}
+              {dishSummaryLoading && <div className="summaryLoading">正在整理評論...</div>}
+              {!dishSummaryLoading && visibleDishSummaries.length === 0 && !dishSummaryError && (
+                <div className="summaryEmpty">目前沒有成功產生的菜色摘要</div>
+              )}
+              {!dishSummaryLoading && visibleDishSummaries.length > 0 && (
+                <div className="summaryList">
+                  {visibleDishSummaries.map((item) => (
+                    <div className="summaryRow" key={item.id}>
+                      <div className="summaryDish">
+                        <div className="summaryDishName">{item.name}</div>
+                        <div className="summaryReviewCount">{item.reviewCount} 則評論</div>
+                      </div>
+                      <div className="summaryText">{item.summary}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── Clear confirm modal ── */}
         {confirmClear && (
