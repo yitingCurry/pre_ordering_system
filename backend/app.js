@@ -2,6 +2,8 @@
 
 const express = require('express');
 const cors = require('cors');
+const axios = require('axios');
+const crypto = require('crypto');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
@@ -15,7 +17,13 @@ const fs = require('fs');
  *   - close()       : gracefully closes DB (and timer if running)
  */
 function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}) {
-  const DB_PATH = dbPath || process.env.DB_PATH || path.join(__dirname, '..', 'database', 'restaurant.db');
+  const configuredDbPath = dbPath || process.env.DB_PATH;
+  const DB_PATH = (() => {
+    if (!configuredDbPath) return path.join(__dirname, '..', 'database', 'restaurant.db');
+    if (configuredDbPath === ':memory:' || configuredDbPath.startsWith('file:')) return configuredDbPath;
+    if (path.isAbsolute(configuredDbPath)) return configuredDbPath;
+    return path.resolve(__dirname, '..', configuredDbPath);
+  })();
 
   const dbDir = path.dirname(DB_PATH);
   if (!fs.existsSync(dbDir)) {
@@ -63,6 +71,7 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
   const { formatFeedbackItem, buildFeedbackSummary } = require('./line/feedback');
   const { labelRating } = require('./line/feedbackLabels');
   const { countWaitingAhead } = require('./line/queueHelpers');
+  const { loadMenuItems } = require('./line/menuItems');
 
   // ---- App setup ----
   const app = express();
@@ -71,7 +80,7 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
     if (!process.env.CORS_ORIGIN) return true;
     const list = process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
     if (process.env.NODE_ENV !== 'production') {
-      return [...new Set([...list, 'http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001'])];
+      return [...new Set([...list, 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3080', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3080'])];
     }
     return list;
   }
@@ -121,6 +130,15 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
     await runSql('CREATE INDEX IF NOT EXISTS idx_dish_reviews_menu_item_id ON dish_reviews(menuItemId)');
+    await runSql(`CREATE TABLE IF NOT EXISTS dish_review_summaries (
+      menuItemId TEXT PRIMARY KEY,
+      dishName TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      reviewCount INTEGER NOT NULL,
+      reviewsHash TEXT NOT NULL,
+      model TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
     await ensureColumn('queue', 'deviceToken', 'TEXT');
     await ensureColumn('queue', 'partySize', 'INTEGER NOT NULL DEFAULT 1');
     await ensureColumn('queue', 'lineUserId', 'TEXT');
@@ -225,6 +243,182 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
       const unit = Number(item.price) || 0;
       return sum + unit * (item.quantity || 1);
     }, 0);
+  }
+
+  function getGeminiConfig() {
+    return {
+      apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_AI_API_KEY || '',
+      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+    };
+  }
+
+  function hashReviewsForCache(reviews) {
+    const payload = reviews
+      .slice(0, 20)
+      .map((review) => `${review.id}|${review.rating || ''}|${review.content || ''}`)
+      .sort()
+      .join('\n');
+    return crypto.createHash('sha256').update(payload).digest('hex');
+  }
+
+  async function saveDishSummaryCache({ menuItemId, dishName, summary, reviewCount, reviewsHash, model }) {
+    await runSql(
+      `INSERT INTO dish_review_summaries (menuItemId, dishName, summary, reviewCount, reviewsHash, model, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(menuItemId) DO UPDATE SET
+         dishName = excluded.dishName,
+         summary = excluded.summary,
+         reviewCount = excluded.reviewCount,
+         reviewsHash = excluded.reviewsHash,
+         model = excluded.model,
+         updated_at = CURRENT_TIMESTAMP`,
+      [menuItemId, dishName, summary, reviewCount, reviewsHash, model]
+    );
+  }
+
+  function countHanChars(text) {
+    const matches = String(text || '').match(/\p{Script=Han}/gu);
+    return matches ? matches.length : 0;
+  }
+
+  function cleanSummary(text) {
+    return String(text || '')
+      .replace(/^摘要[:：]\s*/, '')
+      .replace(/["'`「」『』]/g, '')
+      .split(/\n+/)[0]
+      .replace(/[ \t\r\n]+/g, '')
+      .trim();
+  }
+
+  function isPoorSummary(summary) {
+    const han = countHanChars(summary);
+    if (han < 12) return true;
+    const chunks = String(summary || '')
+      .split(/[\s,，、；;]+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (chunks.length >= 3 && chunks.every((part) => countHanChars(part) <= 5)) return true;
+    return false;
+  }
+
+  function normalizeSummaryText(text) {
+    return String(text || '')
+      .toLowerCase()
+      .replace(/[^\p{Script=Han}a-z0-9]/gu, '');
+  }
+
+  function isDishNameOnlySummary(summary, dishName) {
+    const s = normalizeSummaryText(summary);
+    const name = normalizeSummaryText(dishName);
+    if (!s) return true;
+    if (s === name) return true;
+    if (name.includes(s) && s.length <= Math.min(6, name.length)) return true;
+    if (s.includes(name) && s.length <= name.length + 2) return true;
+    return false;
+  }
+
+  function buildDishSummaryPrompt(menuItem, reviewText, retry) {
+    const lines = [
+      '你是餐廳店員，要把 Google 評論整理成「一句完整話」給同事快速閱讀。',
+      `菜名：${menuItem.name}`,
+      '',
+      '規則：',
+      '1. 只根據下方評論，不得捏造。',
+      '2. 不要寫菜名，不要列關鍵詞，不要用空格或頓號串多個短詞。',
+      '3. 只輸出一條通順的繁體中文句子，共 15 到 22 個中文字，句尾不要標點。',
+      '4. 句子至少提到兩點，例如口味、口感、份量、鹹淡、油膩、推薦與否。',
+      '',
+      '正確範例（完整一句，不是關鍵詞）：',
+      '外皮酥脆內餡多汁多數客人覺得份量很足夠',
+      '醬汁偏鹹但很下飯很適合配白飯一起吃',
+      '',
+      '錯誤範例（禁止）：',
+      '香酥多汁份量足',
+      '清爽解 牛肉口感軟 千萬別',
+      '',
+      '評論：',
+      reviewText
+    ];
+    if (retry) {
+      lines.push('', '你上一輪回覆太短或像關鍵詞列表。請改寫成 15 到 22 個中文字的完整一句話。');
+    }
+    return lines.join('\n');
+  }
+
+  async function requestDishSummaryFromGemini({ apiKey, model, prompt }) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey
+    };
+    const bodyWithThinking = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.5,
+        maxOutputTokens: 256,
+        thinkingConfig: { thinkingBudget: 0 }
+      }
+    };
+    const bodyPlain = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.5,
+        maxOutputTokens: 256
+      }
+    };
+
+    let response;
+    try {
+      response = await axios.post(url, bodyWithThinking, { headers, timeout: 20000 });
+    } catch (e) {
+      const status = e.response?.status;
+      if (status !== 400 && status !== 422) throw e;
+      response = await axios.post(url, bodyPlain, { headers, timeout: 20000 });
+    }
+
+    return response.data?.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || '')
+      .join('') || '';
+  }
+
+  async function summarizeDishReviews(menuItem, reviews) {
+    const { apiKey, model } = getGeminiConfig();
+    if (!apiKey) {
+      return { summary: '', aiAvailable: false, error: 'GEMINI_API_KEY is not configured' };
+    }
+
+    const reviewText = reviews
+      .map((review, index) => `${index + 1}. ${review.rating ? `[${review.rating}] ` : ''}${review.content}`)
+      .join('\n')
+      .slice(0, 6000);
+
+    if (!reviewText) {
+      return { summary: '暫無評論', aiAvailable: true, error: null };
+    }
+
+    let lastSummary = '';
+    try {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const prompt = buildDishSummaryPrompt(menuItem, reviewText, attempt > 0);
+        const text = await requestDishSummaryFromGemini({ apiKey, model, prompt });
+        const summary = cleanSummary(text);
+        lastSummary = summary;
+        if (isDishNameOnlySummary(summary, menuItem.name)) continue;
+        if (isPoorSummary(summary)) continue;
+        return { summary, aiAvailable: true, error: null };
+      }
+
+      if (isDishNameOnlySummary(lastSummary, menuItem.name)) {
+        return { summary: '', aiAvailable: true, error: 'AI returned dish name only' };
+      }
+      if (lastSummary) {
+        return { summary: lastSummary, aiAvailable: true, error: null };
+      }
+      return { summary: '摘要產生失敗', aiAvailable: true, error: null };
+    } catch (e) {
+      console.error('summarizeDishReviews', e.response?.data || e.message || e);
+      return { summary: '', aiAvailable: true, error: 'AI summary failed' };
+    }
   }
 
   // ---- Routes ----
@@ -579,6 +773,118 @@ function createApp({ dbPath, disableTimers = false, disableNotify = false } = {}
       res.json({ menuItemId: req.params.id, count: rows.length, reviews: rows });
     } catch {
       res.status(500).json({ error: '取得餐點評論失敗' });
+    }
+  });
+
+  app.get('/menu-items/review-summaries', async (req, res) => {
+    try {
+      const forceRefresh = req.query.refresh === '1' || req.query.refresh === 'true';
+      const { model } = getGeminiConfig();
+      const rows = await allSql(
+        `SELECT id, menuItemId, dishName, reviewer, rating, content
+         FROM dish_reviews
+         ORDER BY id DESC`
+      );
+      const nameById = new Map();
+      try {
+        for (const item of loadMenuItems()) {
+          nameById.set(item.id, item.name);
+        }
+      } catch (e) {
+        console.warn('loadMenuItems fallback to dish_reviews', e.message || e);
+      }
+      const reviewsByItem = rows.reduce((acc, row) => {
+        if (!acc[row.menuItemId]) acc[row.menuItemId] = [];
+        if (acc[row.menuItemId].length < 20) acc[row.menuItemId].push(row);
+        if (!nameById.has(row.menuItemId)) {
+          nameById.set(row.menuItemId, row.dishName || row.menuItemId);
+        }
+        return acc;
+      }, {});
+
+      const itemIds = Object.keys(reviewsByItem);
+      if (!itemIds.length) {
+        return res.json({
+          aiAvailable: Boolean(getGeminiConfig().apiKey),
+          model,
+          items: [],
+          cachedCount: 0,
+          generatedCount: 0
+        });
+      }
+
+      const summaries = [];
+      let cachedCount = 0;
+      let generatedCount = 0;
+
+      for (const menuItemId of itemIds) {
+        const reviews = reviewsByItem[menuItemId];
+        const dishName = nameById.get(menuItemId) || menuItemId;
+        const reviewsHash = hashReviewsForCache(reviews);
+        const menuItem = { id: menuItemId, name: dishName };
+
+        if (!forceRefresh) {
+          const cached = await getSql(
+            `SELECT summary, reviewCount, reviewsHash, model
+             FROM dish_review_summaries
+             WHERE menuItemId = ?`,
+            [menuItemId]
+          );
+          if (
+            cached &&
+            cached.reviewsHash === reviewsHash &&
+            cached.model === model &&
+            cached.summary &&
+            cached.summary !== '摘要產生失敗'
+          ) {
+            summaries.push({
+              id: menuItemId,
+              name: dishName,
+              reviewCount: cached.reviewCount,
+              summary: cached.summary,
+              error: null,
+              fromCache: true
+            });
+            cachedCount += 1;
+            continue;
+          }
+        }
+
+        const result = await summarizeDishReviews(menuItem, reviews);
+        if (result.summary && !result.error && result.summary !== '摘要產生失敗') {
+          await saveDishSummaryCache({
+            menuItemId,
+            dishName,
+            summary: result.summary,
+            reviewCount: reviews.length,
+            reviewsHash,
+            model
+          });
+          generatedCount += 1;
+        }
+        summaries.push({
+          id: menuItemId,
+          name: dishName,
+          reviewCount: reviews.length,
+          summary: result.summary,
+          error: result.error || null,
+          fromCache: false
+        });
+      }
+
+      summaries.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hant'));
+
+      res.json({
+        aiAvailable: Boolean(getGeminiConfig().apiKey),
+        model,
+        items: summaries,
+        cachedCount,
+        generatedCount,
+        refreshed: forceRefresh
+      });
+    } catch (e) {
+      console.error('menu-items/review-summaries', e);
+      res.status(500).json({ error: 'Unable to load dish review summaries' });
     }
   });
 

@@ -18,6 +18,11 @@ function normalizeText(value) {
 
 function loadMenuItems() {
   if (cachedItems) return cachedItems;
+  if (!fs.existsSync(MENU_PATH)) {
+    console.warn(`Menu source not found: ${MENU_PATH}`);
+    cachedItems = [];
+    return cachedItems;
+  }
   const source = fs.readFileSync(MENU_PATH, 'utf8');
   const items = [];
   const pattern = /\{\s*id:\s*'([^']+)'\s*,\s*name:\s*'([^']+)'/g;
